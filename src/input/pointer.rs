@@ -53,15 +53,17 @@ impl Srwm {
         // Buffer BTN_MIDDLE release while a pending click is waiting
         if button == config::BTN_MIDDLE
             && button_state == ButtonState::Released
-            && let Some(ref mut pending) = self.pending_middle_click
+            && let Some(ref mut pending) = self.gestures.pending_middle_click
         {
             pending.release_time = Some(Event::time_msec(&event));
             return;
         }
 
         if button_state == ButtonState::Pressed {
-            self.set_last_scroll_pan(None);
-            self.with_output_state(|os| os.momentum.stop());
+            self.with_output_state(|os| {
+                os.last_scroll_pan = None;
+                os.momentum.stop();
+            });
 
             // A 3-finger tap (LRM button map) generates BTN_MIDDLE.
             // Buffer it — if a 3-finger swipe follows within 300ms, suppress
@@ -75,7 +77,7 @@ impl Srwm {
                     .is_none()
             } {
                 // Cancel any existing pending click first
-                if let Some(old) = self.pending_middle_click.take() {
+                if let Some(old) = self.gestures.pending_middle_click.take() {
                     self.loop_handle.remove(old.timer_token);
                     self.flush_middle_click(old.press_time, old.release_time);
                 }
@@ -89,7 +91,7 @@ impl Srwm {
                         TimeoutAction::Drop
                     })
                 {
-                    self.pending_middle_click = Some(PendingMiddleClick {
+                    self.gestures.pending_middle_click = Some(PendingMiddleClick {
                         press_time: Event::time_msec(&event),
                         release_time: None,
                         timer_token: token,
@@ -275,15 +277,16 @@ impl Srwm {
                         // No window or pinned — fall through
                     }
                     MouseAction::PanViewport => {
-                        self.set_panning(true);
+                        self.with_output_state(|os| os.panning = true);
                         let from_empty = context == BindingContext::OnCanvas;
                         let grab = self.make_pan_grab(pos, button, from_empty);
                         pointer.set_grab(self, grab, serial, Focus::Clear);
                         return;
                     }
                     MouseAction::CenterNearest => {
-                        let screen_pos =
-                            canvas_to_screen(CanvasPos(pos), self.camera(), self.zoom()).0;
+                        let screen_pos = self.with_output_state(|os| {
+                            canvas_to_screen(CanvasPos(pos), os.camera, os.zoom).0
+                        });
                         let start_data = GrabStartData {
                             focus: None,
                             button,
@@ -462,8 +465,9 @@ impl Srwm {
 
         // Compute context — recent_pan stickiness forces OnCanvas to prevent
         // jitter when a window slides under the pointer during a pan gesture.
-        let recent_pan = self.last_scroll_pan().is_some_and(|t: std::time::Instant| {
-            t.elapsed() < std::time::Duration::from_millis(150)
+        let recent_pan = self.with_output_state(|os| {
+            os.last_scroll_pan
+                .is_some_and(|t: std::time::Instant| t.elapsed() < Duration::from_millis(150))
         });
         let context = if recent_pan {
             BindingContext::OnCanvas
@@ -483,11 +487,16 @@ impl Srwm {
                     let v = event.amount(Axis::Vertical).unwrap_or(0.0);
                     if h != 0.0 || v != 0.0 {
                         if source == AxisSource::Finger {
-                            self.set_last_scroll_pan(Some(std::time::Instant::now()));
+                            self.with_output_state(|os| {
+                                os.last_scroll_pan = Some(std::time::Instant::now())
+                            });
                         }
-                        let s = self.config.trackpad_speed;
+                        let (zoom, s) = (
+                            self.with_output_state(|os| os.zoom),
+                            self.config.trackpad_speed,
+                        );
                         let canvas_delta: Point<f64, smithay::utils::Logical> =
-                            Point::from((h * s / self.zoom(), v * s / self.zoom()));
+                            Point::from((h * s / zoom, v * s / zoom));
                         self.drift_pan(canvas_delta);
                         let new_pos = pos + canvas_delta;
                         let serial = SERIAL_COUNTER.next_serial();
@@ -514,12 +523,13 @@ impl Srwm {
                     if v != 0.0 {
                         let steps = -v / 30.0;
                         let factor = self.config.zoom_step.powf(steps);
-                        let cur_zoom = self.zoom();
+                        let (cur_zoom, cur_camera) =
+                            self.with_output_state(|os| (os.zoom, os.camera));
                         let new_zoom = (cur_zoom * factor).clamp(self.min_zoom(), canvas::MAX_ZOOM);
 
                         if new_zoom != cur_zoom {
                             let screen_pos =
-                                canvas_to_screen(CanvasPos(pos), self.camera(), cur_zoom).0;
+                                canvas_to_screen(CanvasPos(pos), cur_camera, cur_zoom).0;
                             let new_camera = canvas::zoom_anchor_camera(pos, screen_pos, new_zoom);
                             self.with_output_state(|os| {
                                 os.camera = new_camera;
@@ -567,7 +577,8 @@ impl Srwm {
         button: u32,
         from_empty_canvas: bool,
     ) -> PanGrab {
-        let screen_pos = canvas_to_screen(CanvasPos(canvas_pos), self.camera(), self.zoom()).0;
+        let screen_pos = self
+            .with_output_state(|os| canvas_to_screen(CanvasPos(canvas_pos), os.camera, os.zoom).0);
         PanGrab {
             start_data: GrabStartData {
                 focus: None,

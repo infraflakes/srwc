@@ -87,8 +87,8 @@ impl Srwm {
         // Raise, focus, animate camera + zoom to 1.0
         let serial = smithay::utils::SERIAL_COUNTER.next_serial();
         self.raise_and_focus(window, serial);
-        self.set_overview_return(None);
         self.with_output_state(|os| {
+            os.overview_return = None;
             os.momentum.stop();
             os.zoom_animation_center = Some(center);
             os.camera_target = Some(target_camera);

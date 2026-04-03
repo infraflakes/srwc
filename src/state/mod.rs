@@ -305,6 +305,36 @@ pub fn load_cameras() -> HashMap<String, (Point<f64, Logical>, f64)> {
     result
 }
 
+pub struct XWaylandContext {
+    pub shell_state: XWaylandShellState,
+    pub wm: Option<X11Wm>,
+    /// Override-redirect X11 windows (menus, tooltips) — rendered manually, not in Space.
+    pub override_redirect: Vec<X11Surface>,
+    pub display: Option<u32>,
+    /// XWayland client handle, stored for reconnect/cleanup.
+    pub client: Option<smithay::reexports::wayland_server::Client>,
+}
+
+pub struct GestureContext {
+    pub state: Option<GestureState>,
+    /// The output a gesture started on (pinned for duration of gesture).
+    pub pinned_output: Option<Output>,
+    /// Fullscreen window that was exited by a gesture (saved before execute_action sees it).
+    pub exited_fullscreen: Option<Window>,
+    pub pending_middle_click: Option<PendingMiddleClick>,
+}
+
+pub struct DrmState {
+    pub active_crtcs: HashSet<crtc::Handle>,
+    pub redraws_needed: HashSet<crtc::Handle>,
+    pub frames_pending: HashSet<crtc::Handle>,
+}
+
+pub struct SessionContext {
+    pub session: Option<LibSeatSession>,
+    pub input_devices: Vec<smithay::reexports::input::Device>,
+}
+
 /// Central compositor state.
 pub struct Srwm {
     // -- global: infrastructure --
@@ -405,24 +435,20 @@ pub struct Srwm {
     pub fullscreen: HashMap<Output, FullscreenState>,
 
     // -- global: gesture state --
-    pub gesture_state: Option<GestureState>,
-    pub pending_middle_click: Option<PendingMiddleClick>,
+    pub gestures: GestureContext,
 
     // -- global: momentum launch timer --
     pub momentum_timer: Option<RegistrationToken>,
 
     // -- global: session --
-    pub session: Option<LibSeatSession>,
-    pub input_devices: Vec<smithay::reexports::input::Device>,
+    pub session_ctx: SessionContext,
     pub active_layout: String,
 
     // -- global: autostart --
     pub autostart: Vec<String>,
 
     // -- global: udev/DRM --
-    pub active_crtcs: HashSet<crtc::Handle>,
-    pub redraws_needed: HashSet<crtc::Handle>,
-    pub frames_pending: HashSet<crtc::Handle>,
+    pub drm: DrmState,
 
     // -- global: config hot-reload --
     pub config_file_mtime: Option<std::time::SystemTime>,
@@ -434,10 +460,6 @@ pub struct Srwm {
     pub last_animation_tick: Instant,
     /// The output the pointer is currently on (for input routing).
     pub focused_output: Option<Output>,
-    /// The output a gesture started on (pinned for duration of gesture).
-    pub gesture_output: Option<Output>,
-    /// Fullscreen window that was exited by a gesture (saved before execute_action sees it).
-    pub gesture_exited_fullscreen: Option<Window>,
     /// Output names kept as virtual placeholders when all physical outputs disconnect.
     /// Prevents `active_output().unwrap()` panics by keeping the output in the Space.
     pub disconnected_outputs: HashSet<String>,
@@ -446,13 +468,7 @@ pub struct Srwm {
     pub output_config_dirty: bool,
 
     // -- global: XWayland --
-    pub xwayland_shell_state: XWaylandShellState,
-    pub x11_wm: Option<X11Wm>,
-    /// Override-redirect X11 windows (menus, tooltips) — rendered manually, not in Space.
-    pub x11_override_redirect: Vec<X11Surface>,
-    pub x11_display: Option<u32>,
-    /// XWayland client handle, stored for reconnect/cleanup.
-    pub xwayland_client: Option<smithay::reexports::wayland_server::Client>,
+    pub xwayland: XWaylandContext,
 
     // -- global: SSD title bar double-click --
     pub last_titlebar_click: Option<(
@@ -614,29 +630,37 @@ impl Srwm {
             focus_history: Vec::new(),
             cycle_state: None,
             held_action: None,
-            gesture_state: None,
-            pending_middle_click: None,
+            gestures: GestureContext {
+                state: None,
+                pinned_output: None,
+                exited_fullscreen: None,
+                pending_middle_click: None,
+            },
             momentum_timer: None,
             fullscreen: HashMap::new(),
-            session: None,
-            input_devices: Vec::new(),
+            session_ctx: SessionContext {
+                session: None,
+                input_devices: Vec::new(),
+            },
             active_layout: String::new(),
             autostart,
-            active_crtcs: HashSet::new(),
-            redraws_needed: HashSet::new(),
-            frames_pending: HashSet::new(),
+            drm: DrmState {
+                active_crtcs: HashSet::new(),
+                redraws_needed: HashSet::new(),
+                frames_pending: HashSet::new(),
+            },
             config_file_mtime: None,
             last_animation_tick: Instant::now(),
             focused_output: None,
-            gesture_output: None,
-            gesture_exited_fullscreen: None,
             disconnected_outputs: HashSet::new(),
             output_config_dirty: false,
-            xwayland_shell_state,
-            x11_wm: None,
-            x11_override_redirect: Vec::new(),
-            x11_display: None,
-            xwayland_client: None,
+            xwayland: XWaylandContext {
+                shell_state: xwayland_shell_state,
+                wm: None,
+                override_redirect: Vec::new(),
+                display: None,
+                client: None,
+            },
             last_titlebar_click: None,
         }
     }
@@ -808,10 +832,11 @@ impl Srwm {
             }
 
             if let Some(parent_canvas) =
-                find_or_parent(&self.x11_override_redirect, &self.space, parent_id, 10)
+                find_or_parent(&self.xwayland.override_redirect, &self.space, parent_id, 10)
             {
                 let parent_or = self
-                    .x11_override_redirect
+                    .xwayland
+                    .override_redirect
                     .iter()
                     .find(|w| w.window_id() == parent_id);
                 let parent_x11_loc = parent_or.map(|w| w.geometry().loc).unwrap_or_default();
@@ -835,8 +860,7 @@ impl Srwm {
         self.active_output()
             .and_then(|o| self.space.output_geometry(&o))
             .map(|viewport| {
-                let cam = self.camera();
-                let z = self.zoom();
+                let (cam, z) = self.with_output_state(|os| (os.camera, os.zoom));
                 Point::from((
                     (cam.x + viewport.size.w as f64 / (2.0 * z)) as i32 - or_geo.size.w / 2,
                     (cam.y + viewport.size.h as f64 / (2.0 * z)) as i32 - or_geo.size.h / 2,
@@ -847,7 +871,7 @@ impl Srwm {
 
     /// Mark all active outputs as needing a redraw.
     pub fn mark_all_dirty(&mut self) {
-        self.redraws_needed.extend(self.active_crtcs.iter());
+        self.drm.redraws_needed.extend(self.drm.active_crtcs.iter());
     }
 
     pub fn remove_capture_state(&mut self, output_name: &str) {
@@ -910,7 +934,7 @@ impl Srwm {
 
     /// Flush the pending middle-click (called by calloop timer when no swipe followed).
     pub fn flush_pending_middle_click(&mut self) {
-        let Some(pending) = self.pending_middle_click.take() else {
+        let Some(pending) = self.gestures.pending_middle_click.take() else {
             return;
         };
         self.flush_middle_click(pending.press_time, pending.release_time);
@@ -1058,72 +1082,26 @@ impl Srwm {
         srwm::canvas::screen_to_canvas(srwm::canvas::ScreenPos(screen), os.camera, os.zoom).0
     }
 
-    /// Batch-access per-output state under a single mutex lock.
-    pub fn with_output_state<R>(&mut self, f: impl FnOnce(&mut OutputState) -> R) -> R {
-        let output = self.active_output().unwrap();
+    /// Batch-access per-output state for the active output under a single mutex lock.
+    pub fn with_output_state<R>(&self, f: impl FnOnce(&mut OutputState) -> R) -> R {
+        let output = self
+            .active_output()
+            .expect("No active output in with_output_state");
         let mut guard = output_state(&output);
         f(&mut guard)
     }
 
-    // -- Per-output field accessors (delegate to active output's OutputState) --
+    /// Batch-access per-output state for a specific output under a single mutex lock.
+    pub fn with_output_state_on<R>(
+        &self,
+        output: &Output,
+        f: impl FnOnce(&mut OutputState) -> R,
+    ) -> R {
+        let mut guard = output_state(output);
+        f(&mut guard)
+    }
 
-    pub fn camera(&self) -> Point<f64, Logical> {
-        output_state(&self.active_output().unwrap()).camera
-    }
-    pub fn set_camera(&mut self, val: Point<f64, Logical>) {
-        output_state(&self.active_output().unwrap()).camera = val;
-    }
-    pub fn zoom(&self) -> f64 {
-        output_state(&self.active_output().unwrap()).zoom
-    }
-    pub fn set_zoom(&mut self, val: f64) {
-        output_state(&self.active_output().unwrap()).zoom = val;
-    }
-    pub fn zoom_target(&self) -> Option<f64> {
-        output_state(&self.active_output().unwrap()).zoom_target
-    }
-    pub fn set_zoom_target(&mut self, val: Option<f64>) {
-        output_state(&self.active_output().unwrap()).zoom_target = val;
-    }
-    pub fn zoom_animation_center(&self) -> Option<Point<f64, Logical>> {
-        output_state(&self.active_output().unwrap()).zoom_animation_center
-    }
-    pub fn set_zoom_animation_center(&mut self, val: Option<Point<f64, Logical>>) {
-        output_state(&self.active_output().unwrap()).zoom_animation_center = val;
-    }
-    pub fn overview_return(&self) -> Option<(Point<f64, Logical>, f64)> {
-        output_state(&self.active_output().unwrap()).overview_return
-    }
-    pub fn set_overview_return(&mut self, val: Option<(Point<f64, Logical>, f64)>) {
-        output_state(&self.active_output().unwrap()).overview_return = val;
-    }
-    pub fn camera_target(&self) -> Option<Point<f64, Logical>> {
-        output_state(&self.active_output().unwrap()).camera_target
-    }
-    pub fn set_camera_target(&mut self, val: Option<Point<f64, Logical>>) {
-        output_state(&self.active_output().unwrap()).camera_target = val;
-    }
-    pub fn last_scroll_pan(&self) -> Option<Instant> {
-        output_state(&self.active_output().unwrap()).last_scroll_pan
-    }
-    pub fn set_last_scroll_pan(&mut self, val: Option<Instant>) {
-        output_state(&self.active_output().unwrap()).last_scroll_pan = val;
-    }
-    pub fn panning(&self) -> bool {
-        output_state(&self.active_output().unwrap()).panning
-    }
-    pub fn set_panning(&mut self, val: bool) {
-        output_state(&self.active_output().unwrap()).panning = val;
-    }
-    pub fn edge_pan_velocity(&self) -> Option<Point<f64, Logical>> {
-        output_state(&self.active_output().unwrap()).edge_pan_velocity
-    }
-    pub fn last_frame_instant(&self) -> Instant {
-        output_state(&self.active_output().unwrap()).last_frame_instant
-    }
-    pub fn set_last_frame_instant(&mut self, val: Instant) {
-        output_state(&self.active_output().unwrap()).last_frame_instant = val;
-    }
+    // -- Per-output field accessors (delegate to active output's OutputState) --
 
     /// Sync each output's position to its camera, so render_output
     /// automatically applies the canvas→screen transform.
@@ -1323,7 +1301,7 @@ impl Srwm {
         // Trackpad settings — reconfigure all connected devices
         if new_config.trackpad != self.config.trackpad {
             self.config.trackpad = new_config.trackpad.clone();
-            let devices = self.input_devices.clone();
+            let devices = self.session_ctx.input_devices.clone();
             for mut device in devices {
                 self.configure_libinput_device(&mut device);
             }
@@ -1375,7 +1353,9 @@ impl Srwm {
                 continue;
             };
             let size = w.geometry().size;
-            let bar = if self.decorations.contains_key(&surface.id()) {
+            let is_fullscreen = self.fullscreen.values().any(|fs| &fs.window == w);
+            let has_ssd = !is_fullscreen && self.decorations.contains_key(&surface.id());
+            let bar = if has_ssd {
                 srwm::config::DecorationConfig::TITLE_BAR_HEIGHT
             } else {
                 0

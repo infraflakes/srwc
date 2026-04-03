@@ -28,13 +28,14 @@ impl Srwm {
         let viewport_size = self.get_viewport_size();
         let saved_location = self.space.element_location(window).unwrap_or_default();
 
+        let (camera, zoom) = self.with_output_state(|os| (os.camera, os.zoom));
         self.fullscreen.insert(
             output,
             FullscreenState {
                 window: window.clone(),
                 saved_location,
-                saved_camera: self.camera(),
-                saved_zoom: self.zoom(),
+                saved_camera: camera,
+                saved_zoom: zoom,
                 saved_size: window.geometry().size,
             },
         );
@@ -54,8 +55,10 @@ impl Srwm {
         self.pointer_over_layer = false;
 
         // Snap camera to integer for pixel-perfect alignment
-        let camera_i32 = self.camera().to_i32_round();
-        self.set_camera(Point::from((camera_i32.x as f64, camera_i32.y as f64)));
+        let camera_i32 = self.with_output_state(|os| {
+            os.camera = Point::from((os.camera.x.round(), os.camera.y.round()));
+            os.camera.to_i32_round()
+        });
 
         // Place window at viewport origin and raise
         self.space.map_element(window.clone(), camera_i32, true);
@@ -113,19 +116,21 @@ impl Srwm {
         &mut self,
         canvas_pos: Point<f64, Logical>,
     ) -> Point<f64, Logical> {
-        let old_camera = self.camera();
-        let old_zoom = self.zoom();
+        let (old_camera, old_zoom) = self.with_output_state(|os| (os.camera, os.zoom));
         self.exit_fullscreen();
         let screen: Point<f64, Logical> = Point::from((
             (canvas_pos.x - old_camera.x) * old_zoom,
             (canvas_pos.y - old_camera.y) * old_zoom,
         ));
-        let cur_zoom = self.zoom();
-        let cur_camera = self.camera();
-        let new_pos = Point::from((
-            screen.x / cur_zoom + cur_camera.x,
-            screen.y / cur_zoom + cur_camera.y,
-        ));
+        let (new_pos, _cur_zoom, _cur_camera) = self.with_output_state(|os| {
+            let cur_zoom = os.zoom;
+            let cur_camera = os.camera;
+            let new_pos = Point::from((
+                screen.x / cur_zoom + cur_camera.x,
+                screen.y / cur_zoom + cur_camera.y,
+            ));
+            (new_pos, cur_zoom, cur_camera)
+        });
         self.warp_pointer(new_pos);
         new_pos
     }

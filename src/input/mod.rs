@@ -154,7 +154,7 @@ impl Srwm {
                         let raw = handle.modified_sym().raw();
                         if (0x1008FE01..=0x1008FE0C).contains(&raw) {
                             let vt = (raw - 0x1008FE01 + 1) as i32;
-                            if let Some(ref mut session) = state.session
+                            if let Some(ref mut session) = state.session_ctx.session
                                 && let Err(e) = session.change_vt(vt)
                             {
                                 tracing::warn!("Failed to switch to VT{vt}: {e}");
@@ -198,7 +198,7 @@ impl Srwm {
                     let raw = sym.raw();
                     if (0x1008FE01..=0x1008FE0C).contains(&raw) {
                         let vt = (raw - 0x1008FE01 + 1) as i32;
-                        if let Some(ref mut session) = state.session
+                        if let Some(ref mut session) = state.session_ctx.session
                             && let Err(e) = session.change_vt(vt)
                         {
                             tracing::warn!("Failed to switch to VT{vt}: {e}");
@@ -503,7 +503,8 @@ impl Srwm {
 
         // position_transformed gives screen-local coords (0..width, 0..height)
         let screen_pos = event.position_transformed(output_geo.size);
-        let canvas_pos = screen_to_canvas(ScreenPos(screen_pos), self.camera(), self.zoom()).0;
+        let canvas_pos = self
+            .with_output_state(|os| screen_to_canvas(ScreenPos(screen_pos), os.camera, os.zoom).0);
 
         // When locked, pointer only targets the lock surface
         if !matches!(self.session_lock, crate::state::SessionLock::Unlocked) {
@@ -929,7 +930,7 @@ impl Srwm {
         &self,
         canvas_pos: Point<f64, smithay::utils::Logical>,
     ) -> Option<(FocusTarget, Point<f64, smithay::utils::Logical>)> {
-        for or_surface in self.x11_override_redirect.iter().rev() {
+        for or_surface in self.xwayland.override_redirect.iter().rev() {
             let Some(wl_surface) = or_surface.wl_surface() else {
                 continue;
             };

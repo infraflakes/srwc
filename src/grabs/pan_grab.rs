@@ -93,7 +93,7 @@ impl PointerGrab<Srwm> for PanGrab {
                 keyboard.set_focus(data, None::<FocusTarget>, serial);
             }
             // Release panning lock and launch momentum so the viewport coasts
-            data.set_panning(false);
+            data.with_output_state_on(&self.output, |os| os.panning = false);
             data.launch_momentum_on(&self.output);
             handle.unset_grab(self, data, event.serial, event.time, true);
         }

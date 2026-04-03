@@ -167,8 +167,12 @@ pub fn init_winit(
 
             // --- Delta time ---
             let now = std::time::Instant::now();
-            let dt = (now - data.last_frame_instant()).min(std::time::Duration::from_millis(33));
-            data.set_last_frame_instant(now);
+            let dt = {
+                let mut os = crate::state::output_state(&output);
+                let dt = (now - os.last_frame_instant).min(std::time::Duration::from_millis(33));
+                os.last_frame_instant = now;
+                dt
+            };
 
             // --- Key repeat for compositor bindings ---
             data.apply_key_repeat();

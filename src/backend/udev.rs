@@ -73,7 +73,9 @@ pub(crate) struct UdevDevice(Rc<RefCell<DeviceData>>);
 /// Tick animations once for all outputs, mark dirty CRTCs, then render.
 pub(crate) fn render_if_needed(device: &UdevDevice, data: &mut Srwm) {
     // Fast path: nothing needs attention — skip all work when idle
-    if data.redraws_needed.is_empty() && !data.has_active_animations() && !data.output_config_dirty
+    if data.drm.redraws_needed.is_empty()
+        && !data.has_active_animations()
+        && !data.output_config_dirty
     {
         return;
     }
@@ -86,7 +88,7 @@ pub(crate) fn render_if_needed(device: &UdevDevice, data: &mut Srwm) {
     // 2. Mark CRTCs dirty for per-output animations
     for (&crtc, surface) in dev.surfaces.iter() {
         if data.output_has_active_animations(&surface.output) {
-            data.redraws_needed.insert(crtc);
+            data.drm.redraws_needed.insert(crtc);
         }
     }
 
@@ -115,7 +117,7 @@ pub(crate) fn render_if_needed(device: &UdevDevice, data: &mut Srwm) {
 
     // 5. Render outputs that need it
     for (&crtc, surface) in dev.surfaces.iter_mut() {
-        if data.redraws_needed.contains(&crtc) && !data.frames_pending.contains(&crtc) {
+        if data.drm.redraws_needed.contains(&crtc) && !data.drm.frames_pending.contains(&crtc) {
             render_frame(data, &mut surface.compositor, &surface.output, crtc);
         }
     }
@@ -303,10 +305,10 @@ pub fn init_udev(
             match &mut event {
                 InputEvent::DeviceAdded { device } => {
                     data.configure_libinput_device(device);
-                    data.input_devices.push(device.clone());
+                    data.session_ctx.input_devices.push(device.clone());
                 }
                 InputEvent::DeviceRemoved { device } => {
-                    data.input_devices.retain(|d| d != device);
+                    data.session_ctx.input_devices.retain(|d| d != device);
                 }
                 _ => {}
             }
@@ -314,7 +316,7 @@ pub fn init_udev(
         })?;
 
     // Store session on state so keyboard handler can call change_vt()
-    data.session = Some(session);
+    data.session_ctx.session = Some(session);
 
     // 6. Scan connectors and set up outputs
     log_drm_connectors(&drm);
@@ -407,8 +409,8 @@ pub fn init_udev(
                     if let Err(e) = surface.compositor.frame_submitted() {
                         tracing::warn!("frame_submitted error: {e:?}");
                     }
-                    data.frames_pending.remove(&crtc);
-                    if data.redraws_needed.contains(&crtc) {
+                    data.drm.frames_pending.remove(&crtc);
+                    if data.drm.redraws_needed.contains(&crtc) {
                         render_frame(data, &mut surface.compositor, &surface.output, crtc);
                     }
                 }
@@ -440,7 +442,7 @@ pub fn init_udev(
                         return;
                     }
                     // VBlanks for pre-switch frames never arrive
-                    data.frames_pending.clear();
+                    data.drm.frames_pending.clear();
                     for (&crtc, surface) in dev.surfaces.iter_mut() {
                         if let Err(e) = surface.compositor.reset_state() {
                             tracing::warn!("Failed to reset DRM surface state: {e}");
@@ -515,7 +517,7 @@ pub fn init_udev(
                                         data,
                                     ) {
                                         surfaces.insert(crtc, sd);
-                                        data.active_crtcs.insert(crtc);
+                                        data.drm.active_crtcs.insert(crtc);
                                         let surface = surfaces.get_mut(&crtc).unwrap();
                                         // Notify existing toplevels about the new output
                                         srwm::protocols::foreign_toplevel::send_output_enter_all(
@@ -609,12 +611,13 @@ pub fn init_udev(
 
                                             // Clean up gesture state if gesture was on the disconnected output
                                             if data
-                                                .gesture_output
+                                                .gestures
+                                                .pinned_output
                                                 .as_ref()
                                                 .is_some_and(|go| go == &surface.output)
                                             {
-                                                data.gesture_output = None;
-                                                data.gesture_state = None;
+                                                data.gestures.pinned_output = None;
+                                                data.gestures.state = None;
                                             }
 
                                             // Clean up per-output resources
@@ -626,9 +629,9 @@ pub fn init_udev(
                                             data.lock_surfaces.remove(&surface.output);
                                         }
                                     }
-                                    data.active_crtcs.remove(&crtc);
-                                    data.frames_pending.remove(&crtc);
-                                    data.redraws_needed.remove(&crtc);
+                                    data.drm.active_crtcs.remove(&crtc);
+                                    data.drm.frames_pending.remove(&crtc);
+                                    data.drm.redraws_needed.remove(&crtc);
                                 }
                                 _ => {}
                             }
@@ -656,7 +659,7 @@ pub fn init_udev(
     {
         let mut dev = device.borrow_mut();
         for (&crtc, surface) in dev.surfaces.iter_mut() {
-            data.active_crtcs.insert(crtc);
+            data.drm.active_crtcs.insert(crtc);
             render_frame(data, &mut surface.compositor, &surface.output, crtc);
         }
         // 13. Notify output management clients of initial state
@@ -981,7 +984,7 @@ fn render_frame(
     output: &Output,
     crtc: crtc::Handle,
 ) {
-    data.redraws_needed.remove(&crtc);
+    data.drm.redraws_needed.remove(&crtc);
 
     // Flush Wayland clients
     data.display_handle.flush_clients().ok();
@@ -1035,7 +1038,7 @@ fn render_frame(
             if let Err(e) = compositor.queue_frame(()) {
                 tracing::warn!("Failed to queue frame: {e:?}");
             } else {
-                data.frames_pending.insert(crtc);
+                data.drm.frames_pending.insert(crtc);
             }
         }
         Err(e) => {

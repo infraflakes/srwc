@@ -80,6 +80,7 @@ impl SeatHandler for Srwm {
 
     fn led_state_changed(&mut self, _seat: &Seat<Self>, led_state: keyboard::LedState) {
         for device in self
+            .session_ctx
             .input_devices
             .iter_mut()
             .filter(|d| d.has_capability(LibinputCapability::Keyboard))
@@ -209,12 +210,13 @@ impl XdgActivationHandler for Srwm {
                 return;
             }
             let mostly_visible = self.space.element_location(&window).is_some_and(|loc| {
+                let (camera, zoom) = self.with_output_state(|os| (os.camera, os.zoom));
                 srwm::canvas::visible_fraction(
                     loc,
                     window.geometry().size,
-                    self.camera(),
+                    camera,
                     self.get_viewport_size(),
-                    self.zoom(),
+                    zoom,
                 ) >= 0.5
             });
             if mostly_visible {
@@ -591,7 +593,7 @@ impl SessionLockHandler for Srwm {
         self.session_lock = SessionLock::Pending(confirmation);
 
         // Kill all transient input/animation state so nothing fires during lock
-        self.gesture_state = None;
+        self.gestures.state = None;
         for output in self.space.outputs().cloned().collect::<Vec<_>>() {
             let mut os = crate::state::output_state(&output);
             os.momentum.stop();
@@ -603,7 +605,7 @@ impl SessionLockHandler for Srwm {
         }
         self.held_action = None;
         self.cursor.grab_cursor = false;
-        if let Some(pending) = self.pending_middle_click.take() {
+        if let Some(pending) = self.gestures.pending_middle_click.take() {
             self.loop_handle.remove(pending.timer_token);
         }
         let serial = smithay::utils::SERIAL_COUNTER.next_serial();

@@ -303,8 +303,7 @@ impl CompositorHandler for Srwm {
                             };
                             let centered = if output_geo.is_some() {
                                 let vc = self.usable_center_screen();
-                                let cam = self.camera();
-                                let z = self.zoom();
+                                let (cam, z) = self.with_output_state(|os| (os.camera, os.zoom));
                                 let cx = (cam.x + vc.x / z).round() as i32 - geo.size.w / 2;
                                 let cy = (cam.y + vc.y / z).round() as i32 - geo.size.h / 2;
                                 (cx, cy)
@@ -596,6 +595,7 @@ impl Srwm {
         window: &smithay::desktop::Window,
         surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
     ) {
+        self.gestures.state = None;
         let resize_state = with_states(surface, |states| {
             *states
                 .data_map

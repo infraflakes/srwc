@@ -297,7 +297,7 @@ fn build_override_redirect_elements(
 
     let mut elements = Vec::new();
     // Reverse: newest OR window = topmost
-    for or_surface in state.x11_override_redirect.iter().rev() {
+    for or_surface in state.xwayland.override_redirect.iter().rev() {
         let Some(wl_surface) = or_surface.wl_surface() else {
             continue;
         };
@@ -1307,7 +1307,7 @@ pub fn post_render(state: &mut crate::state::Srwm, output: &Output) {
     }
 
     // Override-redirect X11 surface frame callbacks
-    for or_surface in &state.x11_override_redirect {
+    for or_surface in &state.xwayland.override_redirect {
         if let Some(wl_surface) = or_surface.wl_surface() {
             smithay::desktop::utils::send_frames_surface_tree(
                 &wl_surface,

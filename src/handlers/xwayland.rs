@@ -38,7 +38,7 @@ fn x11_edge_to_xdg(edge: ResizeEdge) -> xdg_toplevel::ResizeEdge {
 
 impl XwmHandler for Srwm {
     fn xwm_state(&mut self, _xwm: XwmId) -> &mut X11Wm {
-        self.x11_wm.as_mut().expect("X11Wm not started")
+        self.xwayland.wm.as_mut().expect("X11Wm not started")
     }
 
     fn new_window(&mut self, _xwm: XwmId, _window: X11Surface) {}
@@ -93,8 +93,7 @@ impl XwmHandler for Srwm {
                 .active_output()
                 .and_then(|o| self.space.output_geometry(&o))
                 .map(|_| {
-                    let cam = self.camera();
-                    let z = self.zoom();
+                    let (cam, z) = self.with_output_state(|os| (os.camera, os.zoom));
                     (
                         (cam.x + vc.x / z).round() as i32 - geo.size.w / 2,
                         (cam.y + bar / 2.0 + vc.y / z).round() as i32 - geo.size.h / 2,
@@ -120,12 +119,12 @@ impl XwmHandler for Srwm {
 
     fn mapped_override_redirect_window(&mut self, _xwm: XwmId, window: X11Surface) {
         tracing::debug!("X11 override-redirect mapped: {:?}", window.class());
-        self.x11_override_redirect.push(window);
+        self.xwayland.override_redirect.push(window);
     }
 
     fn unmapped_window(&mut self, _xwm: XwmId, window: X11Surface) {
         tracing::info!("X11 unmapped: {:?}", window.class());
-        self.x11_override_redirect.retain(|w| w != &window);
+        self.xwayland.override_redirect.retain(|w| w != &window);
 
         if let Some(smithay_window) = self.find_x11_window(&window) {
             if let Some(wl_surface) = smithay_window.wl_surface() {
@@ -314,20 +313,20 @@ impl XwmHandler for Srwm {
         mime: String,
         fd: std::os::fd::OwnedFd,
     ) {
-        if let Some(wm) = self.x11_wm.as_mut() {
+        if let Some(wm) = self.xwayland.wm.as_mut() {
             wm.send_selection(sel, mime, fd, self.loop_handle.clone())
                 .ok();
         }
     }
 
     fn new_selection(&mut self, _xwm: XwmId, sel: SelectionTarget, mimes: Vec<String>) {
-        if let Some(wm) = self.x11_wm.as_mut() {
+        if let Some(wm) = self.xwayland.wm.as_mut() {
             wm.new_selection(sel, Some(mimes)).ok();
         }
     }
 
     fn cleared_selection(&mut self, _xwm: XwmId, sel: SelectionTarget) {
-        if let Some(wm) = self.x11_wm.as_mut() {
+        if let Some(wm) = self.xwayland.wm.as_mut() {
             wm.new_selection(sel, None).ok();
         }
     }
@@ -360,7 +359,7 @@ impl XwmHandler for Srwm {
 
 impl XWaylandShellHandler for Srwm {
     fn xwayland_shell_state(&mut self) -> &mut XWaylandShellState {
-        &mut self.xwayland_shell_state
+        &mut self.xwayland.shell_state
     }
 
     fn surface_associated(&mut self, _xwm: XwmId, wl_surface: WlSurface, surface: X11Surface) {

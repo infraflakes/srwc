@@ -94,7 +94,7 @@ impl Srwm {
     // ── Swipe ──────────────────────────────────────────────────────────
 
     fn exit_fullscreen_for_gesture(&mut self) {
-        self.gesture_exited_fullscreen = self.active_fullscreen().map(|fs| fs.window.clone());
+        self.gestures.exited_fullscreen = self.active_fullscreen().map(|fs| fs.window.clone());
         let pointer = self.seat.get_pointer().unwrap();
         let pos = pointer.current_location();
         self.exit_fullscreen_remap_pointer(pos);
@@ -116,7 +116,7 @@ impl Srwm {
         let context = self.pointer_context(pos);
 
         // Priority 1: Pending middle-click (3-finger tap) → check DoubletapSwipe
-        if let Some(pending) = self.pending_middle_click.take() {
+        if let Some(pending) = self.gestures.pending_middle_click.take() {
             self.loop_handle.remove(pending.timer_token);
             let dt_trigger = GestureTrigger::DoubletapSwipe { fingers };
             let dt_entry = self
@@ -125,7 +125,7 @@ impl Srwm {
                 .cloned();
             if let Some(entry) = dt_entry {
                 self.cancel_animations();
-                self.gesture_output = self.active_output();
+                self.gestures.pinned_output = self.active_output();
                 match entry {
                     GestureConfigEntry::Continuous(ContinuousAction::MoveWindow) => {
                         if let Some((window, _)) = self.window_under(pos) {
@@ -166,17 +166,17 @@ impl Srwm {
         match entry {
             Some(GestureConfigEntry::Continuous(action)) => {
                 self.cancel_animations();
-                self.gesture_output = self.active_output();
+                self.gestures.pinned_output = self.active_output();
                 match action {
                     ContinuousAction::PanViewport => {
-                        self.gesture_state = Some(GestureState::SwipePan);
+                        self.gestures.state = Some(GestureState::SwipePan);
                     }
                     ContinuousAction::MoveWindow => {
                         if let Some((window, _)) = self.window_under(pos) {
                             return self.start_gesture_move(window, pos);
                         }
                         // Not over window — fall back to pan
-                        self.gesture_state = Some(GestureState::SwipePan);
+                        self.gestures.state = Some(GestureState::SwipePan);
                     }
                     ContinuousAction::ResizeWindow => {
                         if let Some((window, _)) = self.window_under(pos).filter(|(w, _)| {
@@ -187,18 +187,18 @@ impl Srwm {
                         }) {
                             return self.start_gesture_resize(window, pos);
                         }
-                        self.gesture_state = Some(GestureState::SwipePan);
+                        self.gestures.state = Some(GestureState::SwipePan);
                     }
                     ContinuousAction::Zoom => {
                         // Swipe doesn't produce scale — treat as pan
-                        self.gesture_state = Some(GestureState::SwipePan);
+                        self.gestures.state = Some(GestureState::SwipePan);
                     }
                 }
             }
             Some(GestureConfigEntry::Threshold(action)) => {
                 self.cancel_animations();
-                self.gesture_output = self.active_output();
-                self.gesture_state =
+                self.gestures.pinned_output = self.active_output();
+                self.gestures.state =
                     Some(self.build_swipe_threshold(fingers, &mods, context, Some(action)));
             }
             None => {
@@ -206,8 +206,8 @@ impl Srwm {
                 let has_dirs = self.has_swipe_direction_bindings(fingers, &mods, context);
                 if has_dirs {
                     self.cancel_animations();
-                    self.gesture_output = self.active_output();
-                    self.gesture_state =
+                    self.gestures.pinned_output = self.active_output();
+                    self.gestures.state =
                         Some(self.build_swipe_threshold(fingers, &mods, context, None));
                 } else {
                     self.forward_swipe_begin(fingers, time);
@@ -267,7 +267,7 @@ impl Srwm {
         let time = Event::time_msec(&event);
         let (zoom, _) = self.gesture_camera_zoom();
 
-        let Some(ref mut state) = self.gesture_state else {
+        let Some(ref mut state) = self.gestures.state else {
             self.forward_swipe_update(delta, time);
             return;
         };
@@ -277,7 +277,7 @@ impl Srwm {
                 let s = self.config.trackpad_speed;
                 let canvas_delta: Point<f64, Logical> =
                     (-delta.x * s / zoom, -delta.y * s / zoom).into();
-                if let Some(output) = self.gesture_output.clone() {
+                if let Some(output) = self.gestures.pinned_output.clone() {
                     self.drift_pan_on(canvas_delta, &output);
                 } else {
                     self.drift_pan(canvas_delta);
@@ -292,7 +292,7 @@ impl Srwm {
                 let cursor_pos = pointer.current_location();
                 drop(pointer);
 
-                let gesture_output = match self.gesture_output.clone() {
+                let gesture_output = match self.gestures.pinned_output.clone() {
                     Some(o) => o,
                     None => return,
                 };
@@ -348,7 +348,7 @@ impl Srwm {
 
                 if target_output != gesture_output {
                     self.focused_output = Some(target_output.clone());
-                    self.gesture_output = Some(target_output);
+                    self.gestures.pinned_output = Some(target_output);
                 }
                 self.warp_pointer(new_canvas);
             }
@@ -363,7 +363,7 @@ impl Srwm {
                 snap,
             } => {
                 // Force focused_output back if it drifted during resize
-                if let Some(ref output) = self.gesture_output
+                if let Some(ref output) = self.gestures.pinned_output
                     && self.focused_output.as_ref().is_some_and(|fo| fo != output)
                 {
                     self.focused_output = Some(output.clone());
@@ -371,7 +371,7 @@ impl Srwm {
 
                 // Clamp gesture delta so the virtual pointer stays within the
                 // gesture output's bounds (screen space).
-                let clamped_delta = if let Some(ref output) = self.gesture_output {
+                let clamped_delta = if let Some(ref output) = self.gestures.pinned_output {
                     let (cam, zm) = {
                         let os = crate::state::output_state(output);
                         (os.camera, os.zoom)
@@ -415,7 +415,7 @@ impl Srwm {
                 new_h = new_h.max(1);
 
                 if self.config.snap_enabled
-                    && let Some(ref output) = self.gesture_output
+                    && let Some(ref output) = self.gestures.pinned_output
                     && let Some(self_surface) = window.wl_surface().map(|s| s.into_owned())
                 {
                     let zoom = output_state(output).zoom;
@@ -540,15 +540,15 @@ impl Srwm {
         let cancelled = event.cancelled();
         let time = Event::time_msec(&event);
 
-        let Some(state) = self.gesture_state.take() else {
-            self.gesture_output = None;
+        let Some(state) = self.gestures.state.take() else {
+            self.gestures.pinned_output = None;
             self.forward_swipe_end(cancelled, time);
             return;
         };
 
         match state {
             GestureState::SwipePan => {
-                if let Some(output) = self.gesture_output.clone() {
+                if let Some(output) = self.gestures.pinned_output.clone() {
                     self.launch_momentum_on(&output);
                 } else {
                     self.launch_momentum();
@@ -597,7 +597,7 @@ impl Srwm {
             }
             _ => {}
         }
-        self.gesture_output = None;
+        self.gestures.pinned_output = None;
     }
 
     // ── Pinch ──────────────────────────────────────────────────────────
@@ -632,9 +632,9 @@ impl Srwm {
             )
         {
             self.cancel_animations();
-            self.gesture_output = self.active_output();
-            self.gesture_state = Some(GestureState::PinchZoom {
-                initial_zoom: self.zoom(),
+            self.gestures.pinned_output = self.active_output();
+            self.gestures.state = Some(GestureState::PinchZoom {
+                initial_zoom: self.with_output_state(|os| os.zoom),
             });
             return;
         }
@@ -658,7 +658,7 @@ impl Srwm {
 
         if action_in.is_some() || action_out.is_some() {
             self.cancel_animations();
-            self.gesture_state = Some(GestureState::PinchThreshold {
+            self.gestures.state = Some(GestureState::PinchThreshold {
                 fired_in: false,
                 fired_out: false,
                 action_in,
@@ -669,7 +669,7 @@ impl Srwm {
 
         // No binding — forward to client
         self.forward_pinch_begin(fingers, time);
-        self.gesture_state = Some(GestureState::PinchForward);
+        self.gestures.state = Some(GestureState::PinchForward);
     }
 
     pub fn on_gesture_pinch_update<I: InputBackend>(&mut self, event: I::GesturePinchUpdateEvent) {
@@ -678,7 +678,7 @@ impl Srwm {
         let rotation = event.rotation();
         let time = Event::time_msec(&event);
 
-        let Some(ref mut state) = self.gesture_state else {
+        let Some(ref mut state) = self.gestures.state else {
             self.forward_pinch_update(delta, scale, rotation, time);
             return;
         };
@@ -693,16 +693,18 @@ impl Srwm {
                     let pos = pointer.current_location();
                     let screen_pos = canvas_to_screen(CanvasPos(pos), cur_camera, cur_zoom).0;
 
-                    if let Some(ref output) = self.gesture_output {
+                    if let Some(ref output) = self.gestures.pinned_output {
                         let mut os = crate::state::output_state(output);
                         os.overview_return = None;
                         os.camera = canvas::zoom_anchor_camera(pos, screen_pos, new_zoom);
                         os.zoom = new_zoom;
                         drop(os);
                     } else {
-                        self.set_overview_return(None);
-                        self.set_camera(canvas::zoom_anchor_camera(pos, screen_pos, new_zoom));
-                        self.set_zoom(new_zoom);
+                        self.with_output_state(|os| {
+                            os.overview_return = None;
+                            os.camera = canvas::zoom_anchor_camera(pos, screen_pos, new_zoom);
+                            os.zoom = new_zoom;
+                        });
                     }
                     self.update_output_from_camera();
 
@@ -742,8 +744,8 @@ impl Srwm {
         let cancelled = event.cancelled();
         let time = Event::time_msec(&event);
 
-        let Some(state) = self.gesture_state.take() else {
-            self.gesture_output = None;
+        let Some(state) = self.gestures.state.take() else {
+            self.gestures.pinned_output = None;
             self.forward_pinch_end(cancelled, time);
             return;
         };
@@ -756,14 +758,16 @@ impl Srwm {
                     let pointer = self.seat.get_pointer().unwrap();
                     let pos = pointer.current_location();
                     let screen_pos = canvas_to_screen(CanvasPos(pos), cur_camera, cur_zoom).0;
-                    if let Some(ref output) = self.gesture_output {
+                    if let Some(ref output) = self.gestures.pinned_output {
                         let mut os = crate::state::output_state(output);
                         os.camera = canvas::zoom_anchor_camera(pos, screen_pos, snapped);
                         os.zoom = snapped;
                         drop(os);
                     } else {
-                        self.set_camera(canvas::zoom_anchor_camera(pos, screen_pos, snapped));
-                        self.set_zoom(snapped);
+                        self.with_output_state(|os| {
+                            os.camera = canvas::zoom_anchor_camera(pos, screen_pos, snapped);
+                            os.zoom = snapped;
+                        });
                     }
                     self.update_output_from_camera();
                     self.warp_pointer(pos);
@@ -781,7 +785,7 @@ impl Srwm {
             }
             _ => {}
         }
-        self.gesture_output = None;
+        self.gestures.pinned_output = None;
     }
 
     pub fn on_gesture_hold_begin<I: InputBackend>(&mut self, event: I::GestureHoldBeginEvent) {
@@ -801,7 +805,7 @@ impl Srwm {
                 _ => None,
             };
             if let Some(action) = action {
-                self.gesture_state = Some(GestureState::HoldAction { action });
+                self.gestures.state = Some(GestureState::HoldAction { action });
                 return;
             }
         }
@@ -811,7 +815,7 @@ impl Srwm {
     pub fn on_gesture_hold_end<I: InputBackend>(&mut self, event: I::GestureHoldEndEvent) {
         let cancelled = event.cancelled();
         let time = Event::time_msec(&event);
-        if let Some(GestureState::HoldAction { action }) = self.gesture_state.take() {
+        if let Some(GestureState::HoldAction { action }) = self.gestures.state.take() {
             if !cancelled {
                 self.execute_action(&action);
             }
@@ -915,7 +919,7 @@ impl Srwm {
             .and_then(|s| srwm::config::applied_rule(s))
             .is_some_and(|r| r.widget)
         {
-            self.gesture_state = Some(GestureState::SwipePan);
+            self.gestures.state = Some(GestureState::SwipePan);
             return;
         }
         let serial = SERIAL_COUNTER.next_serial();
@@ -941,7 +945,7 @@ impl Srwm {
         );
         pointer.set_grab(self, grab, serial, Focus::Clear);
 
-        self.gesture_state = Some(GestureState::SwipeMove);
+        self.gestures.state = Some(GestureState::SwipeMove);
     }
 
     /// Enter Swipe3Resize state: store initial geometry, set resize state + cursor.
@@ -983,7 +987,7 @@ impl Srwm {
         self.cursor.grab_cursor = true;
         self.cursor.cursor_status = CursorImageStatus::Named(resize_cursor(edges));
 
-        self.gesture_state = Some(GestureState::SwipeResize {
+        self.gestures.state = Some(GestureState::SwipeResize {
             window,
             edges,
             initial_location,
@@ -1019,12 +1023,9 @@ impl Srwm {
 
     /// Read camera/zoom from the pinned gesture output, falling back to active output.
     fn gesture_camera_zoom(&self) -> (f64, Point<f64, Logical>) {
-        match self.gesture_output {
-            Some(ref o) => {
-                let os = crate::state::output_state(o);
-                (os.zoom, os.camera)
-            }
-            None => (self.zoom(), self.camera()),
+        match self.gestures.pinned_output {
+            Some(ref o) => self.with_output_state_on(o, |os| (os.zoom, os.camera)),
+            None => self.with_output_state(|os| (os.zoom, os.camera)),
         }
     }
 

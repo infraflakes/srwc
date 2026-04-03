@@ -14,18 +14,16 @@ impl Srwm {
         let serial = smithay::utils::SERIAL_COUNTER.next_serial();
         self.raise_and_focus(window, serial);
 
-        let target_zoom = if reset_zoom {
-            self.set_overview_return(None);
-            1.0
-        } else {
-            let overview_ret = self.overview_return();
-            self.set_overview_return(None);
-            if let Some((_, saved_zoom)) = overview_ret {
-                saved_zoom
+        let target_zoom = self.with_output_state(|os| {
+            if reset_zoom {
+                os.overview_return = None;
+                1.0
             } else {
-                self.zoom()
+                let ret = os.overview_return.map(|(_, z)| z).unwrap_or(os.zoom);
+                os.overview_return = None;
+                ret
             }
-        };
+        });
 
         let window_loc = self.space.element_location(window).unwrap_or_default();
         let window_size = window.geometry().size;

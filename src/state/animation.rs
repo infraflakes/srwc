@@ -41,8 +41,9 @@ impl Srwm {
         canvas_pos: Point<f64, Logical>,
     ) -> Option<(FocusTarget, Point<f64, Logical>)> {
         if self.pointer_over_layer {
-            let screen_pos =
-                canvas::canvas_to_screen(CanvasPos(canvas_pos), self.camera(), self.zoom()).0;
+            let screen_pos = self.with_output_state(|os| {
+                canvas::canvas_to_screen(CanvasPos(canvas_pos), os.camera, os.zoom).0
+            });
             self.layer_surface_under(
                 screen_pos,
                 canvas_pos,
@@ -82,7 +83,7 @@ impl Srwm {
     /// Apply scroll momentum each frame. Suppressed during active
     /// PanGrab to avoid interfering with grab tracking.
     pub fn apply_scroll_momentum(&mut self, dt: Duration) {
-        if self.panning() {
+        if self.with_output_state(|os| os.panning) {
             return;
         }
         let delta = self.with_output_state(|os| os.momentum.tick(dt));
@@ -90,7 +91,7 @@ impl Srwm {
             return;
         };
 
-        self.set_camera(self.camera() + delta);
+        self.with_output_state(|os| os.camera = os.camera + delta);
         self.update_output_from_camera();
 
         // Shift pointer canvas position so screen position stays fixed
@@ -102,13 +103,18 @@ impl Srwm {
     /// Synthetic pointer motion keeps cursor at the same screen position and
     /// lets the active MoveSurfaceGrab reposition the window automatically.
     pub fn apply_edge_pan(&mut self) {
-        let Some(velocity) = self.edge_pan_velocity() else {
+        let canvas_delta = self.with_output_state(|os| {
+            let Some(velocity) = os.edge_pan_velocity else {
+                return None;
+            };
+            let zoom = os.zoom;
+            let delta = Point::from((velocity.x / zoom, velocity.y / zoom));
+            os.camera = os.camera + delta;
+            Some(delta)
+        });
+        let Some(canvas_delta) = canvas_delta else {
             return;
         };
-        // velocity is screen-space speed; convert to canvas delta
-        let zoom = self.zoom();
-        let canvas_delta = Point::from((velocity.x / zoom, velocity.y / zoom));
-        self.set_camera(self.camera() + canvas_delta);
         self.update_output_from_camera();
 
         let pos = self.seat.get_pointer().unwrap().current_location();
@@ -191,32 +197,27 @@ impl Srwm {
     /// Advance the camera animation toward `camera_target` using frame-rate independent lerp.
     /// Shifts the pointer by the camera delta so the cursor stays at the same screen position.
     pub fn apply_camera_animation(&mut self, dt: Duration) {
-        let Some(target) = self.camera_target() else {
-            return;
-        };
-
-        let old_camera = self.camera();
-
         let factor = self.animation_factor(dt);
+        let result = self.with_output_state(|os| {
+            let target = os.camera_target?;
+            let old_camera = os.camera;
+            let dx = target.x - old_camera.x;
+            let dy = target.y - old_camera.y;
 
-        let dx = target.x - old_camera.x;
-        let dy = target.y - old_camera.y;
+            if dx * dx + dy * dy < 0.25 {
+                os.camera = target;
+                os.camera_target = None;
+            } else {
+                os.camera = Point::from((old_camera.x + dx * factor, old_camera.y + dy * factor));
+            }
+            Some(os.camera - old_camera)
+        });
 
-        if dx * dx + dy * dy < 0.25 {
-            self.set_camera(target);
-            self.set_camera_target(None);
-        } else {
-            self.set_camera(Point::from((
-                old_camera.x + dx * factor,
-                old_camera.y + dy * factor,
-            )));
+        if let Some(delta) = result {
+            self.update_output_from_camera();
+            let pos = self.seat.get_pointer().unwrap().current_location();
+            self.warp_pointer(pos + delta);
         }
-
-        self.update_output_from_camera();
-
-        let delta = self.camera() - old_camera;
-        let pos = self.seat.get_pointer().unwrap().current_location();
-        self.warp_pointer(pos + delta);
     }
 
     /// Manage the loading cursor: activate after grace period, clear after deadline.
@@ -243,75 +244,73 @@ impl Srwm {
     /// the on-screen center directly and derives camera, preventing lateral drift.
     /// Otherwise just adjusts pointer so cursor stays at the same screen position.
     pub fn apply_zoom_animation(&mut self, dt: Duration) {
-        let Some(target) = self.zoom_target() else {
-            return;
-        };
-
-        let old_zoom = self.zoom();
-        let old_camera = self.camera();
-
         let factor = self.animation_factor(dt);
+        let vc = self.usable_center_screen();
 
-        let dz = target - old_zoom;
-        if dz.abs() < 0.001 {
-            self.set_zoom(target);
-            self.set_zoom_target(None);
-            self.render.blur_scene_generation += 1;
-        } else {
-            self.set_zoom(old_zoom + dz * factor);
+        let (old_zoom, old_camera, new_zoom, new_camera, warp) = self
+            .with_output_state(|os| {
+                let target = os.zoom_target?;
+                let old_zoom = os.zoom;
+                let old_camera = os.camera;
+
+                let dz = target - old_zoom;
+                if dz.abs() < 0.001 {
+                    os.zoom = target;
+                    os.zoom_target = None;
+                    // Trigger blur update if zoom finished
+                    // self.render.blur_scene_generation += 1; // Handled below
+                } else {
+                    os.zoom = old_zoom + dz * factor;
+                }
+
+                if let Some(target_center) = os.zoom_animation_center {
+                    let current_center: Point<f64, Logical> = Point::from((
+                        old_camera.x + vc.x / old_zoom,
+                        old_camera.y + vc.y / old_zoom,
+                    ));
+                    let cx = current_center.x + (target_center.x - current_center.x) * factor;
+                    let cy = current_center.y + (target_center.y - current_center.y) * factor;
+
+                    let cur_zoom = os.zoom;
+                    os.camera = Point::from((cx - vc.x / cur_zoom, cy - vc.y / cur_zoom));
+
+                    // Suppress camera_animation — we set camera directly
+                    os.camera_target = None;
+
+                    if os.zoom_target.is_none() {
+                        let final_camera = Point::from((
+                            target_center.x - vc.x / cur_zoom,
+                            target_center.y - vc.y / cur_zoom,
+                        ));
+                        os.zoom_animation_center = None;
+                        os.camera_target = Some(final_camera);
+                    }
+                    Some((old_zoom, old_camera, os.zoom, os.camera, true))
+                } else if os.zoom != old_zoom {
+                    Some((old_zoom, old_camera, os.zoom, os.camera, true))
+                } else {
+                    Some((old_zoom, old_camera, os.zoom, os.camera, false))
+                }
+            })
+            .unwrap_or((1.0, Point::default(), 1.0, Point::default(), false));
+
+        if warp {
+            if (new_zoom - old_zoom).abs() > 0.0 || (new_camera.x - old_camera.x).abs() > 0.0 {
+                self.update_output_from_camera();
+                let pos = self.seat.get_pointer().unwrap().current_location();
+                let screen_x: f64 = (pos.x - old_camera.x) * old_zoom;
+                let screen_y: f64 = (pos.y - old_camera.y) * old_zoom;
+                let new_pos = Point::from((
+                    screen_x / new_zoom + new_camera.x,
+                    screen_y / new_zoom + new_camera.y,
+                ));
+                self.warp_pointer(new_pos);
+            }
         }
 
-        if let Some(target_center) = self.zoom_animation_center() {
-            // Combined zoom+camera: lerp the on-screen center, derive camera
-            let vc = self.usable_center_screen();
-            let current_center: Point<f64, Logical> = Point::from((
-                old_camera.x + vc.x / old_zoom,
-                old_camera.y + vc.y / old_zoom,
-            ));
-            let cx = current_center.x + (target_center.x - current_center.x) * factor;
-            let cy = current_center.y + (target_center.y - current_center.y) * factor;
-
-            let cur_zoom = self.zoom();
-            self.set_camera(Point::from((cx - vc.x / cur_zoom, cy - vc.y / cur_zoom)));
-            self.update_output_from_camera();
-
-            // Suppress camera_animation — we set camera directly
-            self.set_camera_target(None);
-
-            if self.zoom_target().is_none() {
-                // Zoom snapped — hand off final convergence to camera_animation
-                let cur_zoom = self.zoom();
-                let final_camera = Point::from((
-                    target_center.x - vc.x / cur_zoom,
-                    target_center.y - vc.y / cur_zoom,
-                ));
-                self.set_zoom_animation_center(None);
-                self.set_camera_target(Some(final_camera));
-            }
-
-            // Warp pointer: compensate for both camera and zoom change
-            let pos = self.seat.get_pointer().unwrap().current_location();
-            let screen_x = (pos.x - old_camera.x) * old_zoom;
-            let screen_y = (pos.y - old_camera.y) * old_zoom;
-            let cur_zoom = self.zoom();
-            let cur_camera = self.camera();
-            let new_pos = Point::from((
-                screen_x / cur_zoom + cur_camera.x,
-                screen_y / cur_zoom + cur_camera.y,
-            ));
-            self.warp_pointer(new_pos);
-        } else if self.zoom() != old_zoom {
-            // Standalone zoom: just compensate pointer for zoom change
-            let pos = self.seat.get_pointer().unwrap().current_location();
-            let cur_camera = self.camera();
-            let screen_x = (pos.x - cur_camera.x) * old_zoom;
-            let screen_y = (pos.y - cur_camera.y) * old_zoom;
-            let cur_zoom = self.zoom();
-            let new_pos = Point::from((
-                screen_x / cur_zoom + cur_camera.x,
-                screen_y / cur_zoom + cur_camera.y,
-            ));
-            self.warp_pointer(new_pos);
+        // Final snapped check for blur
+        if self.with_output_state(|os| os.zoom_target.is_none()) {
+            self.render.blur_scene_generation += 1;
         }
     }
 

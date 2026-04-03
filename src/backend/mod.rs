@@ -72,13 +72,13 @@ pub fn spawn_xwayland(
             {
                 tracing::warn!("Failed to export DISPLAY: {e}");
             }
-            data.x11_display = Some(display_number);
-            data.xwayland_client = Some(client.clone());
+            data.xwayland.display = Some(display_number);
+            data.xwayland.client = Some(client.clone());
 
             match X11Wm::start_wm(handle.clone(), x11_socket, client.clone()) {
                 Ok(wm) => {
                     tracing::info!("X11 window manager started");
-                    data.x11_wm = Some(wm);
+                    data.xwayland.wm = Some(wm);
                 }
                 Err(err) => {
                     tracing::error!("Failed to start X11 WM: {err}");
@@ -89,10 +89,10 @@ pub fn spawn_xwayland(
             tracing::warn!("XWayland crashed, restarting...");
 
             // Clean up dead X11 state
-            data.x11_wm = None;
-            data.xwayland_client = None;
-            data.x11_display = None;
-            data.x11_override_redirect.clear();
+            data.xwayland.wm = None;
+            data.xwayland.client = None;
+            data.xwayland.display = None;
+            data.xwayland.override_redirect.clear();
             // SAFETY: no other threads mutate env vars concurrently
             unsafe {
                 std::env::remove_var("DISPLAY");
