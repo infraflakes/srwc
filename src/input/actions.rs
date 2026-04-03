@@ -69,7 +69,7 @@ impl Srwm {
                     if let Some(window) = window
                         && let Some(loc) = self.space.element_location(&window)
                     {
-                        let step = self.config.nudge_step;
+                        let step = self.config.nav.nudge_step;
                         let (ux, uy) = dir.to_unit_vec();
                         let offset = (
                             (ux * step as f64).round() as i32,
@@ -88,7 +88,7 @@ impl Srwm {
                         os.zoom_animation_center = None;
                         os.overview_return = None;
                         let zoom = os.zoom;
-                        let step = self.config.pan_step / zoom;
+                        let step = self.config.nav.pan_step / zoom;
                         let (ux, uy) = dir.to_unit_vec();
                         let delta: Point<f64, smithay::utils::Logical> =
                             Point::from((ux * step, uy * step));
@@ -236,7 +236,8 @@ impl Srwm {
 
                 let anchors = self
                     .config
-                    .nav_anchors
+                    .nav
+                    .anchors
                     .iter()
                     .map(|&p| (NavTarget::Anchor(p), p));
 
@@ -356,14 +357,14 @@ impl Srwm {
             }
             Action::ZoomIn => {
                 let new_zoom = self
-                    .with_output_state(|os| (os.zoom * self.config.zoom_step).min(canvas::MAX_ZOOM))
+                    .with_output_state(|os| (os.zoom * self.config.zoom.step).min(canvas::MAX_ZOOM))
                     .unwrap_or(1.0);
                 let new_zoom = canvas::snap_zoom(new_zoom);
                 self.zoom_to_anchored(new_zoom);
             }
             Action::ZoomOut => {
                 let new_zoom = self
-                    .with_output_state(|os| (os.zoom / self.config.zoom_step).max(self.min_zoom()))
+                    .with_output_state(|os| (os.zoom / self.config.zoom.step).max(self.min_zoom()))
                     .unwrap_or(1.0);
                 let new_zoom = canvas::snap_zoom(new_zoom);
                 self.zoom_to_anchored(new_zoom);
@@ -414,13 +415,13 @@ impl Srwm {
                                 (loc, size)
                             });
                         let anchors =
-                            self.config.nav_anchors.iter().map(|p| {
+                            self.config.nav.anchors.iter().map(|p| {
                                 (Point::from((p.x as i32, p.y as i32)), Size::from((0, 0)))
                             });
                         let bbox = canvas::all_windows_bbox(windows.chain(anchors));
                         if let Some(bbox) = bbox {
                             let fit_zoom =
-                                canvas::zoom_to_fit(bbox, viewport, self.config.zoom_fit_padding);
+                                canvas::zoom_to_fit(bbox, viewport, self.config.zoom.fit_padding);
                             let bbox_cx = bbox.loc.x as f64 + bbox.size.w as f64 / 2.0;
                             let bbox_cy = bbox.loc.y as f64 + bbox.size.h as f64 / 2.0;
                             let new_camera: Point<f64, smithay::utils::Logical> =

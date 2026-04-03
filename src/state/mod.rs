@@ -560,7 +560,7 @@ impl Srwm {
         let config = Config::load();
 
         let mut seat: Seat<Self> = seat_state.new_wl_seat(&dh, "seat-0");
-        let kb = &config.keyboard_layout;
+        let kb = &config.input.keyboard_layout;
         let xkb = XkbConfig {
             layout: &kb.layout,
             variant: &kb.variant,
@@ -572,7 +572,7 @@ impl Srwm {
             model: &kb.model,
             ..Default::default()
         };
-        seat.add_keyboard(xkb, config.repeat_delay, config.repeat_rate)
+        seat.add_keyboard(xkb, config.input.repeat_delay, config.input.repeat_rate)
             .expect("Failed to add keyboard");
         seat.add_pointer();
         let autostart = config.autostart.clone();
@@ -1215,8 +1215,8 @@ impl Srwm {
         };
 
         // Hot-reload keyboard layout
-        if new_config.keyboard_layout != self.config.keyboard_layout {
-            let kb = &new_config.keyboard_layout;
+        if new_config.input.keyboard_layout != self.config.input.keyboard_layout {
+            let kb = &new_config.input.keyboard_layout;
             let xkb = XkbConfig {
                 layout: &kb.layout,
                 variant: &kb.variant,
@@ -1232,7 +1232,7 @@ impl Srwm {
             let num_lock = keyboard.modifier_state().num_lock;
             if let Err(err) = keyboard.set_xkb_config(self, xkb) {
                 tracing::warn!("Config reload: error updating keyboard layout: {err:?}");
-                new_config.keyboard_layout = self.config.keyboard_layout.clone();
+                new_config.input.keyboard_layout = self.config.input.keyboard_layout.clone();
             } else {
                 tracing::info!("Config reload: keyboard layout updated");
                 let mut mods = keyboard.modifier_state();
@@ -1247,17 +1247,18 @@ impl Srwm {
         }
 
         // Keyboard repeat rate/delay
-        if new_config.repeat_rate != self.config.repeat_rate
-            || new_config.repeat_delay != self.config.repeat_delay
+        if new_config.input.repeat_rate != self.config.input.repeat_rate
+            || new_config.input.repeat_delay != self.config.input.repeat_delay
         {
             let keyboard = self.keyboard();
-            keyboard.change_repeat_info(new_config.repeat_rate, new_config.repeat_delay);
+            keyboard
+                .change_repeat_info(new_config.input.repeat_rate, new_config.input.repeat_delay);
         }
 
         // Momentum friction — apply to all outputs
-        if new_config.friction != self.config.friction {
+        if new_config.nav.friction != self.config.nav.friction {
             for output in self.space.outputs() {
-                output_state(output).momentum.friction = new_config.friction;
+                output_state(output).momentum.friction = new_config.nav.friction;
             }
         }
 
@@ -1307,8 +1308,8 @@ impl Srwm {
         }
 
         // Trackpad settings — reconfigure all connected devices
-        if new_config.trackpad != self.config.trackpad {
-            self.config.trackpad = new_config.trackpad.clone();
+        if new_config.input.trackpad != self.config.input.trackpad {
+            self.config.input.trackpad = new_config.input.trackpad.clone();
             let devices = self.session_ctx.input_devices.clone();
             for mut device in devices {
                 self.configure_libinput_device(&mut device);

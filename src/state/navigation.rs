@@ -66,7 +66,7 @@ impl Srwm {
                     (loc, size)
                 }),
             viewport,
-            self.config.zoom_fit_padding,
+            self.config.zoom.fit_padding,
         )
     }
 

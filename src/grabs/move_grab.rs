@@ -238,13 +238,13 @@ impl PointerGrab<Srwm> for MoveSurfaceGrab {
         let natural_x = self.initial_window_location.x as f64 + delta.x;
         let natural_y = self.initial_window_location.y as f64 + delta.y;
 
-        let (final_x, final_y) = if !data.config.snap_enabled {
+        let (final_x, final_y) = if !data.config.snap.enabled {
             (natural_x, natural_y)
         } else {
             let zoom = output_state(&self.output).zoom;
-            let effective_distance = data.config.snap_distance / zoom;
-            let effective_break = data.config.snap_break_force / zoom;
-            let gap = data.config.snap_gap;
+            let effective_distance = data.config.snap.distance / zoom;
+            let effective_break = data.config.snap.break_force / zoom;
+            let gap = data.config.snap.gap;
 
             let Some(self_surface) = self.window.wl_surface().map(|s| s.into_owned()) else {
                 return;
@@ -266,7 +266,7 @@ impl PointerGrab<Srwm> for MoveSurfaceGrab {
                 gap,
                 threshold: effective_distance,
                 break_force: effective_break,
-                same_edge: data.config.snap_same_edge,
+                same_edge: data.config.snap.same_edge,
             };
             let final_x = update_axis(
                 &mut self.snap.x,
@@ -286,7 +286,7 @@ impl PointerGrab<Srwm> for MoveSurfaceGrab {
                 gap,
                 threshold: effective_distance,
                 break_force: effective_break,
-                same_edge: data.config.snap_same_edge,
+                same_edge: data.config.snap.same_edge,
             };
             let final_visual_y = update_axis(
                 &mut self.snap.y,
@@ -317,9 +317,9 @@ impl PointerGrab<Srwm> for MoveSurfaceGrab {
                 screen_pos,
                 size.w as f64,
                 size.h as f64,
-                cfg.edge_zone,
-                cfg.edge_pan_min,
-                cfg.edge_pan_max,
+                cfg.nav.edge_zone,
+                cfg.nav.edge_pan_min,
+                cfg.nav.edge_pan_max,
             );
 
             let effective_velocity = if let Some(edge) = self.inhibited_edge {
@@ -328,7 +328,7 @@ impl PointerGrab<Srwm> for MoveSurfaceGrab {
                     screen_pos,
                     size.w as f64,
                     size.h as f64,
-                    cfg.edge_zone,
+                    cfg.nav.edge_zone,
                 ) {
                     self.inhibited_edge = None;
                     velocity

@@ -14,7 +14,7 @@ use std::collections::HashMap;
 
 use smithay::backend::input::AxisSource;
 use smithay::input::keyboard::{Keysym, ModifiersState};
-use smithay::utils::{Logical, Point, Transform};
+use smithay::utils::{Point, Transform};
 
 use defaults::{default_bindings, default_gesture_bindings, default_mouse_bindings};
 use toml::{
@@ -33,58 +33,22 @@ const TOOLKIT_DEFAULTS: &[(&str, &str)] = &[
 ];
 
 pub struct Config {
-    pub mod_key: ModKey,
-    pub focus_follows_mouse: bool,
-    /// Multiplier for trackpad scroll and gesture pan deltas. 1.0 = raw trackpad.
-    pub trackpad_speed: f64,
-    /// Multiplier for mouse drag pan (Mod+LMB or LMB on canvas). 1.0 = direct.
-    pub mouse_speed: f64,
-    /// Scroll momentum decay factor per frame. 0.92 = snappy, 0.96 = floaty.
-    pub friction: f64,
-    /// Pixels per keyboard nudge (Mod+Shift+Arrow).
-    pub nudge_step: i32,
-    /// Pixels per keyboard pan (Mod+Ctrl+Arrow).
-    pub pan_step: f64,
-    /// Keyboard repeat delay (ms) and rate (keys/sec).
-    pub repeat_delay: i32,
-    pub repeat_rate: i32,
-    /// Edge auto-pan: activation zone width in pixels from viewport edge.
-    pub edge_zone: f64,
-    /// Edge auto-pan: speed range (px/frame). Quadratic ramp from min to max.
-    pub edge_pan_min: f64,
-    pub edge_pan_max: f64,
-    /// Base lerp factor for camera animation (frame-rate independent). 0.15 = smooth.
-    pub animation_speed: f64,
-    /// Modifier held during window cycling. Release commits selection.
-    pub cycle_modifier: CycleModifier,
-    /// Zoom step multiplier per keypress. 1.1 = 10% per press.
-    pub zoom_step: f64,
-    /// Padding (canvas pixels) around the bounding box for ZoomToFit.
-    pub zoom_fit_padding: f64,
-    pub snap_enabled: bool,
-    pub snap_gap: f64,
-    pub snap_distance: f64,
-    pub snap_break_force: f64,
-    pub snap_same_edge: bool,
+    pub nav: NavigationConfig,
+    pub zoom: ZoomConfig,
+    pub snap: SnapConfig,
+    pub input: InputConfig,
     pub background: BackgroundConfig,
-    pub trackpad: TrackpadSettings,
-    pub mouse_device: MouseDeviceSettings,
-    pub gesture_thresholds: GestureThresholds,
-    pub layout_independent: bool,
-    pub keyboard_layout: KeyboardLayout,
+    pub decorations: DecorationConfig,
+    pub effects: EffectsConfig,
+    pub output_outline: OutputOutlineSettings,
     pub autostart: Vec<String>,
     pub cursor_theme: Option<String>,
     pub cursor_size: Option<u32>,
-    /// Cursor opacity on non-active outputs (0.0 = hidden, 1.0 = full).
     pub inactive_cursor_opacity: f64,
-    pub decorations: DecorationConfig,
-    pub output_outline: OutputOutlineSettings,
-    pub nav_anchors: Vec<Point<f64, Logical>>,
-    pub effects: EffectsConfig,
-    pub window_rules: Vec<WindowRule>,
     pub xwayland_enabled: bool,
     pub env: HashMap<String, String>,
     pub output_configs: Vec<OutputConfig>,
+    pub window_rules: Vec<WindowRule>,
     bindings: HashMap<KeyCombo, Action>,
     pub mouse: ContextBindings<MouseBinding, MouseAction>,
     pub gestures: ContextBindings<GestureBinding, GestureConfigEntry>,
@@ -431,51 +395,59 @@ impl Config {
         };
 
         Self {
-            mod_key,
-            focus_follows_mouse: raw.focus_follows_mouse.unwrap_or(false),
-            trackpad_speed,
-            mouse_speed,
-            friction,
-            nudge_step: raw.navigation.nudge_step.unwrap_or(20),
-            pan_step: raw.navigation.pan_step.unwrap_or(100.0),
-            repeat_delay: raw.input.keyboard.repeat_delay.unwrap_or(200),
-            repeat_rate: raw.input.keyboard.repeat_rate.unwrap_or(25),
-            edge_zone: raw.navigation.edge_pan.zone.unwrap_or(100.0),
-            edge_pan_min: raw.navigation.edge_pan.speed_min.unwrap_or(4.0),
-            edge_pan_max: raw.navigation.edge_pan.speed_max.unwrap_or(10.0),
-            animation_speed: raw.navigation.animation_speed.unwrap_or(0.3),
-            cycle_modifier,
-            zoom_step: raw.zoom.step.unwrap_or(1.1),
-            zoom_fit_padding: raw.zoom.fit_padding.unwrap_or(100.0),
-            snap_enabled: raw.snap.enabled.unwrap_or(true),
-            snap_gap: raw.snap.gap.unwrap_or(12.0),
-            snap_distance: raw.snap.distance.unwrap_or(24.0),
-            snap_break_force: raw.snap.break_force.unwrap_or(32.0),
-            snap_same_edge: raw.snap.same_edge.unwrap_or(false),
+            nav: NavigationConfig {
+                trackpad_speed,
+                mouse_speed,
+                friction,
+                nudge_step: raw.navigation.nudge_step.unwrap_or(20),
+                pan_step: raw.navigation.pan_step.unwrap_or(100.0),
+                edge_zone: raw.navigation.edge_pan.zone.unwrap_or(100.0),
+                edge_pan_min: raw.navigation.edge_pan.speed_min.unwrap_or(4.0),
+                edge_pan_max: raw.navigation.edge_pan.speed_max.unwrap_or(10.0),
+                animation_speed: raw.navigation.animation_speed.unwrap_or(0.3),
+                anchors: raw
+                    .navigation
+                    .anchors
+                    .unwrap_or_else(|| vec![[0.0, 0.0]])
+                    .into_iter()
+                    .map(|[x, y]| Point::from((x, -y)))
+                    .collect(),
+            },
+            zoom: ZoomConfig {
+                step: raw.zoom.step.unwrap_or(1.1),
+                fit_padding: raw.zoom.fit_padding.unwrap_or(100.0),
+            },
+            snap: SnapConfig {
+                enabled: raw.snap.enabled.unwrap_or(true),
+                gap: raw.snap.gap.unwrap_or(12.0),
+                distance: raw.snap.distance.unwrap_or(24.0),
+                break_force: raw.snap.break_force.unwrap_or(32.0),
+                same_edge: raw.snap.same_edge.unwrap_or(false),
+            },
+            input: InputConfig {
+                mod_key,
+                focus_follows_mouse: raw.focus_follows_mouse.unwrap_or(false),
+                cycle_modifier,
+                repeat_delay: raw.input.keyboard.repeat_delay.unwrap_or(200),
+                repeat_rate: raw.input.keyboard.repeat_rate.unwrap_or(25),
+                layout_independent: raw.input.keyboard.layout_independent.unwrap_or(true),
+                keyboard_layout,
+                trackpad,
+                mouse_device,
+                gesture_thresholds,
+            },
             background,
             decorations,
             effects,
-            trackpad,
-            mouse_device,
-            gesture_thresholds,
-            layout_independent: raw.input.keyboard.layout_independent.unwrap_or(true),
-            keyboard_layout,
+            output_outline: parse_output_outline(raw.output.outline.unwrap_or_default()),
+            autostart: raw.autostart.unwrap_or_default(),
             cursor_theme: raw.cursor.theme,
             cursor_size: raw.cursor.size,
             inactive_cursor_opacity: raw.cursor.inactive_opacity.unwrap_or(0.5).clamp(0.0, 1.0),
-            output_outline: parse_output_outline(raw.output.outline.unwrap_or_default()),
-            nav_anchors: raw
-                .navigation
-                .anchors
-                .unwrap_or_else(|| vec![[0.0, 0.0]])
-                .into_iter()
-                .map(|[x, y]| Point::from((x, -y)))
-                .collect(),
-            autostart: raw.autostart.unwrap_or_default(),
-            env: raw.env,
-            window_rules,
             xwayland_enabled: raw.xwayland.enabled,
+            env: raw.env,
             output_configs,
+            window_rules,
             bindings,
             mouse: mouse_bindings,
             gestures: gesture_bindings,

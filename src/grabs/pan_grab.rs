@@ -50,7 +50,7 @@ impl PointerGrab<Srwm> for PanGrab {
         let current_screen_pos = canvas_to_screen(CanvasPos(event.location), camera, zoom).0;
         let screen_delta = current_screen_pos - self.last_screen_pos;
 
-        let mouse_speed = data.config.mouse_speed;
+        let mouse_speed = data.config.nav.mouse_speed;
         let camera_delta = Point::from((
             -screen_delta.x * mouse_speed / zoom,
             -screen_delta.y * mouse_speed / zoom,

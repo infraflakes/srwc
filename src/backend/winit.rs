@@ -78,7 +78,7 @@ pub fn init_winit(
     init_output_state(
         &output,
         initial_camera,
-        data.config.friction,
+        data.config.nav.friction,
         Point::from((0, 0)),
     );
 

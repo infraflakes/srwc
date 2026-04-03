@@ -14,7 +14,7 @@ impl Srwm {
     /// Frame-rate independent lerp factor for smooth animations.
     /// Returns how much of the remaining distance to cover this frame.
     fn animation_factor(&self, dt: Duration) -> f64 {
-        let base = self.config.animation_speed;
+        let base = self.config.nav.animation_speed;
         let dt_secs = dt.as_secs_f64();
         1.0 - (1.0 - base).powf(dt_secs * 60.0)
     }
@@ -29,7 +29,8 @@ impl Srwm {
             return;
         }
         let action = action.clone();
-        let rate_interval = Duration::from_millis(1000 / self.config.repeat_rate.max(1) as u64);
+        let rate_interval =
+            Duration::from_millis(1000 / self.config.input.repeat_rate.max(1) as u64);
         *next_fire = now + rate_interval;
         self.execute_action(&action);
     }

@@ -212,10 +212,10 @@ fn toml_scalar_overrides() {
         step = 1.2
     "#;
     let config = Config::from_toml(toml).unwrap();
-    assert!((config.trackpad_speed - 2.5).abs() < f64::EPSILON);
-    assert!((config.friction - 0.92).abs() < f64::EPSILON);
-    assert_eq!(config.nudge_step, 50);
-    assert!((config.zoom_step - 1.2).abs() < f64::EPSILON);
+    assert!((config.nav.trackpad_speed - 2.5).abs() < f64::EPSILON);
+    assert!((config.nav.friction - 0.92).abs() < f64::EPSILON);
+    assert_eq!(config.nav.nudge_step, 50);
+    assert!((config.zoom.step - 1.2).abs() < f64::EPSILON);
 }
 
 #[test]
@@ -230,8 +230,8 @@ fn toml_new_navigation_fields_override_deprecated_scroll() {
         friction = 0.96
     "#;
     let config = Config::from_toml(toml).unwrap();
-    assert!((config.trackpad_speed - 3.0).abs() < f64::EPSILON);
-    assert!((config.friction - 0.96).abs() < f64::EPSILON);
+    assert!((config.nav.trackpad_speed - 3.0).abs() < f64::EPSILON);
+    assert!((config.nav.friction - 0.96).abs() < f64::EPSILON);
 }
 
 #[test]

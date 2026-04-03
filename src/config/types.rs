@@ -3,7 +3,7 @@ use std::f64::consts::FRAC_1_SQRT_2;
 use std::hash::Hash;
 
 use smithay::input::keyboard::ModifiersState;
-use smithay::utils::Transform;
+use smithay::utils::{Logical, Point, Transform};
 
 pub const BTN_LEFT: u32 = 0x110;
 pub const BTN_RIGHT: u32 = 0x111;
@@ -528,4 +528,107 @@ pub struct BackgroundConfig {
     pub shader_path: Option<String>,
     /// Path to a tile image (PNG/JPG). If set, image is tiled across the canvas.
     pub tile_path: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NavigationConfig {
+    pub trackpad_speed: f64,
+    pub mouse_speed: f64,
+    pub friction: f64,
+    pub nudge_step: i32,
+    pub pan_step: f64,
+    pub edge_zone: f64,
+    pub edge_pan_min: f64,
+    pub edge_pan_max: f64,
+    pub animation_speed: f64,
+    pub anchors: Vec<Point<f64, Logical>>,
+}
+
+impl Default for NavigationConfig {
+    fn default() -> Self {
+        Self {
+            trackpad_speed: 1.5,
+            mouse_speed: 1.0,
+            friction: 0.94,
+            nudge_step: 20,
+            pan_step: 100.0,
+            edge_zone: 100.0,
+            edge_pan_min: 4.0,
+            edge_pan_max: 10.0,
+            animation_speed: 0.3,
+            anchors: vec![Point::from((0.0, 0.0))],
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ZoomConfig {
+    pub step: f64,
+    pub fit_padding: f64,
+}
+
+impl Default for ZoomConfig {
+    fn default() -> Self {
+        Self {
+            step: 1.1,
+            fit_padding: 100.0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SnapConfig {
+    pub enabled: bool,
+    pub gap: f64,
+    pub distance: f64,
+    pub break_force: f64,
+    pub same_edge: bool,
+}
+
+impl Default for SnapConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            gap: 12.0,
+            distance: 24.0,
+            break_force: 32.0,
+            same_edge: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct InputConfig {
+    pub mod_key: ModKey,
+    pub focus_follows_mouse: bool,
+    pub cycle_modifier: CycleModifier,
+    pub repeat_delay: i32,
+    pub repeat_rate: i32,
+    pub layout_independent: bool,
+    pub keyboard_layout: KeyboardLayout,
+    pub trackpad: TrackpadSettings,
+    pub mouse_device: MouseDeviceSettings,
+    pub gesture_thresholds: GestureThresholds,
+}
+
+impl Default for InputConfig {
+    fn default() -> Self {
+        Self {
+            mod_key: ModKey::Super,
+            focus_follows_mouse: false,
+            cycle_modifier: CycleModifier::Alt,
+            repeat_delay: 200,
+            repeat_rate: 25,
+            layout_independent: true,
+            keyboard_layout: KeyboardLayout {
+                layout: "us".into(),
+                variant: String::new(),
+                options: String::new(),
+                model: String::new(),
+            },
+            trackpad: TrackpadSettings::default(),
+            mouse_device: MouseDeviceSettings::default(),
+            gesture_thresholds: GestureThresholds::default(),
+        }
+    }
 }

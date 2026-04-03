@@ -168,7 +168,7 @@ impl PointerGrab<Srwm> for ResizeSurfaceGrab {
         let (mut new_w, mut new_h) = compute_resize(self.edges, self.initial_window_size, delta);
 
         // Snap active resize edges to nearby windows
-        if data.config.snap_enabled
+        if data.config.snap.enabled
             && let Some(self_surface) = self.window.wl_surface().map(|s| s.into_owned())
         {
             let zoom = output_state(&self.output).zoom;
@@ -187,10 +187,10 @@ impl PointerGrab<Srwm> for ResizeSurfaceGrab {
                 &mut new_h,
                 &others,
                 zoom,
-                data.config.snap_gap,
-                data.config.snap_distance,
-                data.config.snap_break_force,
-                data.config.snap_same_edge,
+                data.config.snap.gap,
+                data.config.snap.distance,
+                data.config.snap.break_force,
+                data.config.snap.same_edge,
             );
         }
 

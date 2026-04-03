@@ -928,7 +928,7 @@ fn create_surface(
         -(logical_size.h as f64) / 2.0,
     ));
 
-    init_output_state(&output, camera, state.config.friction, layout_position);
+    init_output_state(&output, camera, state.config.nav.friction, layout_position);
 
     // Restore saved camera/zoom from previous session
     let saved = crate::state::load_cameras();

@@ -274,7 +274,7 @@ impl Srwm {
 
         match state {
             GestureState::SwipePan => {
-                let s = self.config.trackpad_speed;
+                let s = self.config.nav.trackpad_speed;
                 let canvas_delta: Point<f64, Logical> =
                     (-delta.x * s / zoom, -delta.y * s / zoom).into();
                 if let Some(output) = self.gestures.pinned_output.clone() {
@@ -401,7 +401,7 @@ impl Srwm {
 
                 let (mut new_w, mut new_h) = compute_resize(*edges, *initial_size, *cumulative);
 
-                if self.config.snap_enabled
+                if self.config.snap.enabled
                     && let Some(ref output) = self.gestures.pinned_output
                     && let Some(self_surface) = window.wl_surface().map(|s| s.into_owned())
                 {
@@ -453,10 +453,10 @@ impl Srwm {
                         &mut new_h_val,
                         &others,
                         zoom,
-                        self.config.snap_gap,
-                        self.config.snap_distance,
-                        self.config.snap_break_force,
-                        self.config.snap_same_edge,
+                        self.config.snap.gap,
+                        self.config.snap.distance,
+                        self.config.snap.break_force,
+                        self.config.snap.same_edge,
                     );
                     new_w = new_w_val;
                     new_h = new_h_val;
@@ -481,7 +481,7 @@ impl Srwm {
                 }
                 *cumulative += Point::from((-delta.x, -delta.y));
                 let mag_sq = cumulative.x.powi(2) + cumulative.y.powi(2);
-                if mag_sq >= self.config.gesture_thresholds.swipe_distance.powi(2) {
+                if mag_sq >= self.config.input.gesture_thresholds.swipe_distance.powi(2) {
                     *fired = true;
                     let action = if cumulative.y.abs() > cumulative.x.abs() {
                         if cumulative.y < 0.0 {
@@ -691,16 +691,18 @@ impl Srwm {
                 action_in,
                 action_out,
             } => {
-                let to_exec = if !*fired_in && scale < self.config.gesture_thresholds.pinch_in_scale
-                {
-                    *fired_in = true;
-                    action_in.clone()
-                } else if !*fired_out && scale > self.config.gesture_thresholds.pinch_out_scale {
-                    *fired_out = true;
-                    action_out.clone()
-                } else {
-                    None
-                };
+                let to_exec =
+                    if !*fired_in && scale < self.config.input.gesture_thresholds.pinch_in_scale {
+                        *fired_in = true;
+                        action_in.clone()
+                    } else if !*fired_out
+                        && scale > self.config.input.gesture_thresholds.pinch_out_scale
+                    {
+                        *fired_out = true;
+                        action_out.clone()
+                    } else {
+                        None
+                    };
                 if let Some(action) = to_exec {
                     self.execute_action(&action);
                 }
@@ -808,7 +810,7 @@ impl Srwm {
     }
 
     fn configure_trackpad(&self, device: &mut smithay::reexports::input::Device) {
-        let cfg = &self.config.trackpad;
+        let cfg = &self.config.input.trackpad;
         tracing::info!(
             "Configuring trackpad: {} (tap={}, natural_scroll={}, accel={}, profile={:?}, click_method={:?})",
             device.name(),
@@ -859,7 +861,7 @@ impl Srwm {
     }
 
     fn configure_mouse(&self, device: &mut smithay::reexports::input::Device) {
-        let cfg = &self.config.mouse_device;
+        let cfg = &self.config.input.mouse_device;
         tracing::info!(
             "Configuring mouse: {} (accel={}, profile={:?}, natural_scroll={})",
             device.name(),

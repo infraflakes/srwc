@@ -513,7 +513,7 @@ impl Srwm {
                         }
                         let (zoom, s) = (
                             self.with_output_state(|os| os.zoom).unwrap_or(1.0),
-                            self.config.trackpad_speed,
+                            self.config.nav.trackpad_speed,
                         );
                         let canvas_delta: Point<f64, smithay::utils::Logical> =
                             Point::from((h * s / zoom, v * s / zoom));
@@ -542,7 +542,7 @@ impl Srwm {
                         .unwrap_or(0.0);
                     if v != 0.0 {
                         let steps = -v / 30.0;
-                        let factor = self.config.zoom_step.powf(steps);
+                        let factor = self.config.zoom.step.powf(steps);
                         let (cur_zoom, cur_camera) = self
                             .with_output_state(|os| (os.zoom, os.camera))
                             .unwrap_or((1.0, Point::default()));

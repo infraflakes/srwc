@@ -185,7 +185,8 @@ impl Srwm {
             time,
             |state, modifiers, handle| {
                 // If cycling is active and the cycle modifier was released, end cycle
-                if state.cycle_state.is_some() && !state.config.cycle_modifier.is_pressed(modifiers)
+                if state.cycle_state.is_some()
+                    && !state.config.input.cycle_modifier.is_pressed(modifiers)
                 {
                     state.end_cycle();
                     return FilterResult::Forward;
@@ -210,7 +211,7 @@ impl Srwm {
                         return FilterResult::Intercept(Some(action.clone()));
                     }
 
-                    if state.config.layout_independent
+                    if state.config.input.layout_independent
                         && let Some(raw_sym) = handle.raw_latin_sym_or_raw_current_sym()
                         && raw_sym != sym
                         && let Some(action) = state.config.lookup(modifiers, raw_sym)
@@ -235,7 +236,7 @@ impl Srwm {
         if let Some(ref action) = action.flatten() {
             // Set up key repeat for repeatable actions
             if action.is_repeatable() {
-                let delay = std::time::Duration::from_millis(self.config.repeat_delay as u64);
+                let delay = std::time::Duration::from_millis(self.config.input.repeat_delay as u64);
                 self.held_action = Some((
                     keycode_u32,
                     action.clone(),
@@ -383,7 +384,7 @@ impl Srwm {
     /// Sloppy focus: when enabled, focus the non-widget window under the pointer
     /// without raising it. Skips layers, widgets, and empty canvas.
     fn maybe_hover_focus(&mut self, canvas_pos: Point<f64, smithay::utils::Logical>) {
-        if !self.config.focus_follows_mouse
+        if !self.config.input.focus_follows_mouse
             || self.pointer_over_layer
             || self.active_fullscreen().is_some()
         {
