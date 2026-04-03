@@ -1,0 +1,30 @@
+[package]
+name = "driftwm"
+version = "0.1.4"
+edition = "2024"
+license = "GPL-3.0-or-later"
+authors = ["Klim Kostiuk <2601074@gmail.com>"]
+
+[dependencies]
+smithay = { version = "0.7.0", default-features = false, features = [
+    "backend_winit",
+    "backend_udev",
+    "backend_drm",
+    "backend_gbm",
+    "backend_libinput",
+    "backend_session_libseat",
+    "backend_egl",
+    "renderer_gl",
+    "wayland_frontend",
+    "desktop",
+    "xwayland",
+] }
+smithay-drm-extras = { git = "https://github.com/Smithay/smithay.git" }
+libdisplay-info = "0.3.0"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+xcursor = "0.3"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+libc = "0.2.182"
