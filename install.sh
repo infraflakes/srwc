@@ -1,8 +1,8 @@
 #!/bin/sh
-# driftwm installer — downloads the latest release and installs system-wide.
+# srwm installer — downloads the latest release and installs system-wide.
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/malbiruk/driftwm/main/install.sh | sudo sh
-#   curl -fsSL https://raw.githubusercontent.com/malbiruk/driftwm/main/install.sh | sudo sh -s uninstall
+#   curl -fsSL https://raw.githubusercontent.com/malbiruk/srwm/main/install.sh | sudo sh
+#   curl -fsSL https://raw.githubusercontent.com/malbiruk/srwm/main/install.sh | sudo sh -s uninstall
 
 set -e
 
@@ -10,7 +10,7 @@ PREFIX="${PREFIX:-/usr/local}"
 BINDIR="$PREFIX/bin"
 DATADIR="$PREFIX/share"
 SYSCONFDIR="${SYSCONFDIR:-/etc}"
-REPO="malbiruk/driftwm"
+REPO="malbiruk/srwm"
 
 # Runtime libraries the binary links against.
 RUNTIME_LIBS="libseat.so libdisplay-info.so libinput.so libgbm.so libxkbcommon.so"
@@ -94,49 +94,49 @@ do_install() {
     tar xzf "$TMPDIR/release.tar.gz" -C "$TMPDIR"
 
     # Find the extracted directory
-    SRCDIR=$(find "$TMPDIR" -maxdepth 1 -type d -name 'driftwm-*' | head -1)
+    SRCDIR=$(find "$TMPDIR" -maxdepth 1 -type d -name 'srwm-*' | head -1)
     if [ -z "$SRCDIR" ]; then
         red "Error: unexpected archive structure."
         exit 1
     fi
 
     bold "Installing to $PREFIX..."
-    install -Dm755 "$SRCDIR/driftwm" "$BINDIR/driftwm"
-    install -Dm755 "$SRCDIR/driftwm-session" "$BINDIR/driftwm-session"
-    install -Dm644 "$SRCDIR/driftwm.desktop" "$DATADIR/wayland-sessions/driftwm.desktop"
-    install -Dm644 "$SRCDIR/driftwm-portals.conf" "$DATADIR/xdg-desktop-portal/driftwm-portals.conf"
+    install -Dm755 "$SRCDIR/srwm" "$BINDIR/srwm"
+    install -Dm755 "$SRCDIR/srwm-session" "$BINDIR/srwm-session"
+    install -Dm644 "$SRCDIR/srwm.desktop" "$DATADIR/wayland-sessions/srwm.desktop"
+    install -Dm644 "$SRCDIR/srwm-portals.conf" "$DATADIR/xdg-desktop-portal/srwm-portals.conf"
 
-    if [ ! -f "$SYSCONFDIR/driftwm/config.toml" ]; then
-        install -Dm644 "$SRCDIR/config.toml" "$SYSCONFDIR/driftwm/config.toml"
+    if [ ! -f "$SYSCONFDIR/srwm/config.toml" ]; then
+        install -Dm644 "$SRCDIR/config.toml" "$SYSCONFDIR/srwm/config.toml"
     else
-        bold "Keeping existing $SYSCONFDIR/driftwm/config.toml"
+        bold "Keeping existing $SYSCONFDIR/srwm/config.toml"
     fi
 
     for f in "$SRCDIR"/wallpapers/*.glsl; do
-        [ -f "$f" ] && install -Dm644 "$f" "$DATADIR/driftwm/wallpapers/$(basename "$f")"
+        [ -f "$f" ] && install -Dm644 "$f" "$DATADIR/srwm/wallpapers/$(basename "$f")"
     done
 
-    green "driftwm installed successfully!"
+    green "srwm installed successfully!"
     echo ""
-    echo "  Binary:     $BINDIR/driftwm"
-    echo "  Session:    $BINDIR/driftwm-session"
-    echo "  Config:     $SYSCONFDIR/driftwm/config.toml"
-    echo "  Wallpapers: $DATADIR/driftwm/wallpapers/"
+    echo "  Binary:     $BINDIR/srwm"
+    echo "  Session:    $BINDIR/srwm-session"
+    echo "  Config:     $SYSCONFDIR/srwm/config.toml"
+    echo "  Wallpapers: $DATADIR/srwm/wallpapers/"
     echo ""
-    echo "Select 'driftwm' from your display manager, or run 'driftwm' from a TTY."
+    echo "Select 'srwm' from your display manager, or run 'srwm' from a TTY."
 }
 
 do_uninstall() {
     check_root
 
-    bold "Uninstalling driftwm..."
-    rm -f "$BINDIR/driftwm"
-    rm -f "$BINDIR/driftwm-session"
-    rm -f "$DATADIR/wayland-sessions/driftwm.desktop"
-    rm -f "$DATADIR/xdg-desktop-portal/driftwm-portals.conf"
-    rm -rf "$DATADIR/driftwm"
+    bold "Uninstalling srwm..."
+    rm -f "$BINDIR/srwm"
+    rm -f "$BINDIR/srwm-session"
+    rm -f "$DATADIR/wayland-sessions/srwm.desktop"
+    rm -f "$DATADIR/xdg-desktop-portal/srwm-portals.conf"
+    rm -rf "$DATADIR/srwm"
     # Don't remove config — user may want to keep it
-    green "driftwm uninstalled. Config left at $SYSCONFDIR/driftwm/"
+    green "srwm uninstalled. Config left at $SYSCONFDIR/srwm/"
 }
 
 case "${1:-install}" in

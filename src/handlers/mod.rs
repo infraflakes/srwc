@@ -3,8 +3,8 @@ pub mod layer_shell;
 pub mod xdg_shell;
 pub mod xwayland;
 
-use crate::state::{DriftWm, FocusTarget};
-use driftwm::window_ext::WindowExt;
+use crate::state::{Srwm, FocusTarget};
+use srwm::window_ext::WindowExt;
 use smithay::wayland::seat::WaylandFocus;
 use smithay::{
     backend::renderer::ImportDma,
@@ -48,7 +48,7 @@ use smithay::{
     },
 };
 
-impl SeatHandler for DriftWm {
+impl SeatHandler for Srwm {
     type KeyboardFocus = FocusTarget;
     type PointerFocus = FocusTarget;
     type TouchFocus = FocusTarget;
@@ -102,32 +102,32 @@ impl SeatHandler for DriftWm {
     }
 }
 
-delegate_seat!(DriftWm);
+delegate_seat!(Srwm);
 
-impl SelectionHandler for DriftWm {
+impl SelectionHandler for Srwm {
     type SelectionUserData = ();
 }
 
-impl DataDeviceHandler for DriftWm {
+impl DataDeviceHandler for Srwm {
     fn data_device_state(&self) -> &DataDeviceState {
         &self.data_device_state
     }
 }
 
-impl ClientDndGrabHandler for DriftWm {}
-impl ServerDndGrabHandler for DriftWm {}
+impl ClientDndGrabHandler for Srwm {}
+impl ServerDndGrabHandler for Srwm {}
 
-delegate_data_device!(DriftWm);
+delegate_data_device!(Srwm);
 
-impl OutputHandler for DriftWm {}
+impl OutputHandler for Srwm {}
 
-delegate_output!(DriftWm);
+delegate_output!(Srwm);
 
-impl TabletSeatHandler for DriftWm {}
+impl TabletSeatHandler for Srwm {}
 
-delegate_cursor_shape!(DriftWm);
+delegate_cursor_shape!(Srwm);
 
-impl DmabufHandler for DriftWm {
+impl DmabufHandler for Srwm {
     fn dmabuf_state(&mut self) -> &mut DmabufState {
         &mut self.dmabuf_state
     }
@@ -143,24 +143,24 @@ impl DmabufHandler for DriftWm {
             return;
         };
         if backend.renderer().import_dmabuf(&dmabuf, None).is_ok() {
-            let _ = notifier.successful::<DriftWm>();
+            let _ = notifier.successful::<Srwm>();
         } else {
             notifier.failed();
         }
     }
 }
 
-delegate_dmabuf!(DriftWm);
+delegate_dmabuf!(Srwm);
 
-delegate_viewporter!(DriftWm);
+delegate_viewporter!(Srwm);
 
-impl FractionalScaleHandler for DriftWm {
+impl FractionalScaleHandler for Srwm {
     fn new_fractional_scale(&mut self, _surface: WlSurface) {}
 }
 
-delegate_fractional_scale!(DriftWm);
+delegate_fractional_scale!(Srwm);
 
-impl XdgActivationHandler for DriftWm {
+impl XdgActivationHandler for Srwm {
     fn activation_state(&mut self) -> &mut XdgActivationState {
         &mut self.xdg_activation_state
     }
@@ -208,7 +208,7 @@ impl XdgActivationHandler for DriftWm {
                 return;
             }
             let mostly_visible = self.space.element_location(&window).is_some_and(|loc| {
-                driftwm::canvas::visible_fraction(
+                srwm::canvas::visible_fraction(
                     loc,
                     window.geometry().size,
                     self.camera(),
@@ -226,25 +226,25 @@ impl XdgActivationHandler for DriftWm {
     }
 }
 
-delegate_xdg_activation!(DriftWm);
+delegate_xdg_activation!(Srwm);
 
-impl PrimarySelectionHandler for DriftWm {
+impl PrimarySelectionHandler for Srwm {
     fn primary_selection_state(&self) -> &PrimarySelectionState {
         &self.primary_selection_state
     }
 }
 
-delegate_primary_selection!(DriftWm);
+delegate_primary_selection!(Srwm);
 
-impl DataControlHandler for DriftWm {
+impl DataControlHandler for Srwm {
     fn data_control_state(&self) -> &DataControlState {
         &self.data_control_state
     }
 }
 
-delegate_data_control!(DriftWm);
+delegate_data_control!(Srwm);
 
-impl PointerConstraintsHandler for DriftWm {
+impl PointerConstraintsHandler for Srwm {
     fn new_constraint(&mut self, _surface: &WlSurface, _pointer: &PointerHandle<Self>) {
         self.maybe_activate_pointer_constraint();
     }
@@ -276,12 +276,12 @@ impl PointerConstraintsHandler for DriftWm {
     }
 }
 
-delegate_pointer_constraints!(DriftWm);
+delegate_pointer_constraints!(Srwm);
 
-delegate_relative_pointer!(DriftWm);
-delegate_pointer_gestures!(DriftWm);
+delegate_relative_pointer!(Srwm);
+delegate_pointer_gestures!(Srwm);
 
-impl KeyboardShortcutsInhibitHandler for DriftWm {
+impl KeyboardShortcutsInhibitHandler for Srwm {
     fn keyboard_shortcuts_inhibit_state(
         &mut self,
     ) -> &mut smithay::wayland::keyboard_shortcuts_inhibit::KeyboardShortcutsInhibitState {
@@ -295,45 +295,45 @@ impl KeyboardShortcutsInhibitHandler for DriftWm {
     fn inhibitor_destroyed(&mut self, _inhibitor: KeyboardShortcutsInhibitor) {}
 }
 
-delegate_keyboard_shortcuts_inhibit!(DriftWm);
+delegate_keyboard_shortcuts_inhibit!(Srwm);
 
-impl IdleInhibitHandler for DriftWm {
+impl IdleInhibitHandler for Srwm {
     fn inhibit(&mut self, _surface: WlSurface) {}
     fn uninhibit(&mut self, _surface: WlSurface) {}
 }
 
-delegate_idle_inhibit!(DriftWm);
+delegate_idle_inhibit!(Srwm);
 
 use smithay::delegate_idle_notify;
 use smithay::wayland::idle_notify::{IdleNotifierHandler, IdleNotifierState};
 
-impl IdleNotifierHandler for DriftWm {
+impl IdleNotifierHandler for Srwm {
     fn idle_notifier_state(&mut self) -> &mut IdleNotifierState<Self> {
         &mut self.idle_notifier_state
     }
 }
-delegate_idle_notify!(DriftWm);
+delegate_idle_notify!(Srwm);
 
-delegate_presentation!(DriftWm);
-delegate_single_pixel_buffer!(DriftWm);
+delegate_presentation!(Srwm);
+delegate_single_pixel_buffer!(Srwm);
 
 use smithay::delegate_xdg_foreign;
 use smithay::wayland::xdg_foreign::{XdgForeignHandler, XdgForeignState};
 
-impl XdgForeignHandler for DriftWm {
+impl XdgForeignHandler for Srwm {
     fn xdg_foreign_state(&mut self) -> &mut XdgForeignState {
         &mut self.xdg_foreign_state
     }
 }
-delegate_xdg_foreign!(DriftWm);
+delegate_xdg_foreign!(Srwm);
 
 use smithay::delegate_content_type;
-delegate_content_type!(DriftWm);
+delegate_content_type!(Srwm);
 
 use smithay::delegate_xdg_dialog;
 use smithay::wayland::shell::xdg::dialog::XdgDialogHandler;
 
-impl XdgDialogHandler for DriftWm {
+impl XdgDialogHandler for Srwm {
     fn modal_changed(&mut self, toplevel: ToplevelSurface, is_modal: bool) {
         if is_modal {
             // Redirect focus from parent to this modal dialog
@@ -346,13 +346,13 @@ impl XdgDialogHandler for DriftWm {
         }
     }
 }
-delegate_xdg_dialog!(DriftWm);
+delegate_xdg_dialog!(Srwm);
 
 use smithay::delegate_xdg_decoration;
 use smithay::wayland::shell::xdg::ToplevelSurface;
 use smithay::wayland::shell::xdg::decoration::XdgDecorationHandler;
 
-impl XdgDecorationHandler for DriftWm {
+impl XdgDecorationHandler for Srwm {
     fn new_decoration(&mut self, toplevel: ToplevelSurface) {
         use smithay::reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode;
         // CSD-first: tell client to draw its own decorations
@@ -372,8 +372,8 @@ impl XdgDecorationHandler for DriftWm {
         let wl_surface = toplevel.wl_surface().clone();
 
         // If a window rule forces decoration mode, override the client's request
-        let effective_mode = if let Some(rule) = driftwm::config::applied_rule(&wl_surface)
-            && rule.decoration != driftwm::config::DecorationMode::Client
+        let effective_mode = if let Some(rule) = srwm::config::applied_rule(&wl_surface)
+            && rule.decoration != srwm::config::DecorationMode::Client
         {
             Mode::ServerSide
         } else {
@@ -421,11 +421,11 @@ impl XdgDecorationHandler for DriftWm {
     }
 }
 
-delegate_xdg_decoration!(DriftWm);
+delegate_xdg_decoration!(Srwm);
 
-use driftwm::protocols::foreign_toplevel::{ForeignToplevelHandler, ForeignToplevelManagerState};
+use srwm::protocols::foreign_toplevel::{ForeignToplevelHandler, ForeignToplevelManagerState};
 
-impl ForeignToplevelHandler for DriftWm {
+impl ForeignToplevelHandler for Srwm {
     fn foreign_toplevel_manager_state(&mut self) -> &mut ForeignToplevelManagerState {
         &mut self.foreign_toplevel_state
     }
@@ -496,11 +496,11 @@ impl ForeignToplevelHandler for DriftWm {
     }
 }
 
-driftwm::delegate_foreign_toplevel!(DriftWm);
+srwm::delegate_foreign_toplevel!(Srwm);
 
-use driftwm::protocols::screencopy::{Screencopy, ScreencopyHandler, ScreencopyManagerState};
+use srwm::protocols::screencopy::{Screencopy, ScreencopyHandler, ScreencopyManagerState};
 
-impl ScreencopyHandler for DriftWm {
+impl ScreencopyHandler for Srwm {
     fn frame(&mut self, screencopy: Screencopy) {
         self.pending_screencopies.push(screencopy);
     }
@@ -510,15 +510,15 @@ impl ScreencopyHandler for DriftWm {
     }
 }
 
-driftwm::delegate_screencopy!(DriftWm);
+srwm::delegate_screencopy!(Srwm);
 
-driftwm::delegate_image_capture_source!(DriftWm);
+srwm::delegate_image_capture_source!(Srwm);
 
-use driftwm::protocols::image_copy_capture::{
+use srwm::protocols::image_copy_capture::{
     ImageCopyCaptureHandler, ImageCopyCaptureState, PendingCapture,
 };
 
-impl ImageCopyCaptureHandler for DriftWm {
+impl ImageCopyCaptureHandler for Srwm {
     fn image_copy_capture_state(&mut self) -> &mut ImageCopyCaptureState {
         &mut self.image_copy_capture_state
     }
@@ -528,13 +528,13 @@ impl ImageCopyCaptureHandler for DriftWm {
     }
 }
 
-driftwm::delegate_image_copy_capture!(DriftWm);
+srwm::delegate_image_copy_capture!(Srwm);
 
-use driftwm::protocols::output_management::{
+use srwm::protocols::output_management::{
     OutputManagementHandler, OutputManagementState, RequestedHeadConfig,
 };
 
-impl OutputManagementHandler for DriftWm {
+impl OutputManagementHandler for Srwm {
     fn output_management_state(&mut self) -> &mut OutputManagementState {
         &mut self.output_management_state
     }
@@ -571,7 +571,7 @@ impl OutputManagementHandler for DriftWm {
     }
 }
 
-driftwm::delegate_output_management!(DriftWm);
+srwm::delegate_output_management!(Srwm);
 
 use crate::state::SessionLock;
 use smithay::delegate_session_lock;
@@ -579,7 +579,7 @@ use smithay::wayland::session_lock::{
     LockSurface, SessionLockHandler, SessionLockManagerState, SessionLocker,
 };
 
-impl SessionLockHandler for DriftWm {
+impl SessionLockHandler for Srwm {
     fn lock_state(&mut self) -> &mut SessionLockManagerState {
         &mut self.session_lock_manager_state
     }
@@ -647,4 +647,4 @@ impl SessionLockHandler for DriftWm {
     }
 }
 
-delegate_session_lock!(DriftWm);
+delegate_session_lock!(Srwm);

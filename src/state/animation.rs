@@ -3,14 +3,14 @@ use std::time::{Duration, Instant};
 use smithay::input::pointer::CursorImageStatus;
 use smithay::utils::{Logical, Point};
 
-use driftwm::canvas::{self, CanvasPos};
+use srwm::canvas::{self, CanvasPos};
 use smithay::wayland::shell::wlr_layer::Layer as WlrLayer;
 
 use smithay::output::Output;
 
-use super::{DriftWm, FocusTarget, output_state};
+use super::{Srwm, FocusTarget, output_state};
 
-impl DriftWm {
+impl Srwm {
     /// Frame-rate independent lerp factor for smooth animations.
     /// Returns how much of the remaining distance to cover this frame.
     fn animation_factor(&self, dt: Duration) -> f64 {
@@ -152,7 +152,7 @@ impl DriftWm {
         }
         let token = self.loop_handle.insert_source(
             smithay::reexports::calloop::timer::Timer::from_duration(Duration::from_millis(50)),
-            |_, _, data: &mut DriftWm| {
+            |_, _, data: &mut Srwm| {
                 data.launch_momentum();
                 smithay::reexports::calloop::timer::TimeoutAction::Drop
             },

@@ -25,13 +25,13 @@ use smithay::wayland::seat::WaylandFocus;
 use smithay::utils::{Logical, Rectangle};
 use smithay::wayland::compositor::{RegionAttributes, RectangleKind};
 
-use driftwm::canvas::{ScreenPos, screen_to_canvas};
+use srwm::canvas::{ScreenPos, screen_to_canvas};
 use crate::decorations::DecorationHit;
-use crate::state::{DriftWm, FocusTarget};
+use crate::state::{Srwm, FocusTarget};
 
 /// Find the canvas-space element location of the window that owns the given surface.
 fn window_origin_for_surface(
-    state: &DriftWm,
+    state: &Srwm,
     surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
 ) -> Option<Point<f64, smithay::utils::Logical>> {
     let window = state.space.elements().find(|w| {
@@ -54,7 +54,7 @@ fn region_bounding_box(region: &RegionAttributes) -> Rectangle<i32, Logical> {
     bbox.unwrap_or_default()
 }
 
-impl DriftWm {
+impl Srwm {
     /// Process a single input event from any backend (winit, libinput, etc).
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         self.mark_all_dirty();
@@ -242,7 +242,7 @@ impl DriftWm {
     /// Shared by both absolute and relative pointer motion handlers.
     fn dispatch_pointer_focus(
         &mut self,
-        pointer: &smithay::input::pointer::PointerHandle<DriftWm>,
+        pointer: &smithay::input::pointer::PointerHandle<Srwm>,
         screen_pos: Point<f64, smithay::utils::Logical>,
         canvas_pos: Point<f64, smithay::utils::Logical>,
         serial: smithay::utils::Serial,
@@ -320,7 +320,7 @@ impl DriftWm {
         let Some(window) = window else { return };
         let is_widget = window
             .wl_surface()
-            .and_then(|s| driftwm::config::applied_rule(&s))
+            .and_then(|s| srwm::config::applied_rule(&s))
             .is_some_and(|r| r.widget);
         if is_widget {
             return;
@@ -511,8 +511,8 @@ impl DriftWm {
         let output_size = crate::state::output_logical_size(&cur_output);
 
         // Convert old canvas pos to screen pos, add layout_position → old layout pos
-        let old_screen = driftwm::canvas::canvas_to_screen(
-            driftwm::canvas::CanvasPos(old_canvas), cur_camera, cur_zoom,
+        let old_screen = srwm::canvas::canvas_to_screen(
+            srwm::canvas::CanvasPos(old_canvas), cur_camera, cur_zoom,
         ).0;
         let old_layout: Point<f64, smithay::utils::Logical> = Point::from((
             old_screen.x + cur_layout_pos.x as f64,
@@ -557,7 +557,7 @@ impl DriftWm {
             let os = crate::state::output_state(&target_output);
             (os.camera, os.zoom)
         };
-        let mut canvas_pos = driftwm::canvas::screen_to_canvas(
+        let mut canvas_pos = srwm::canvas::screen_to_canvas(
             ScreenPos(screen_pos), target_camera, target_zoom,
         ).0;
 
@@ -600,8 +600,8 @@ impl DriftWm {
             if let Some(pos) = clamped {
                 canvas_pos = pos;
                 // Recompute screen_pos so layer shell hit-testing uses the clamped position
-                screen_pos = driftwm::canvas::canvas_to_screen(
-                    driftwm::canvas::CanvasPos(canvas_pos), target_camera, target_zoom,
+                screen_pos = srwm::canvas::canvas_to_screen(
+                    srwm::canvas::CanvasPos(canvas_pos), target_camera, target_zoom,
                 ).0;
             }
         }
@@ -636,12 +636,12 @@ impl DriftWm {
         pos: Point<f64, smithay::utils::Logical>,
         widget_filter: Option<bool>,
     ) -> Option<(FocusTarget, Point<f64, smithay::utils::Logical>)> {
-        let bar_height = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
-        let border_width = driftwm::config::DecorationConfig::RESIZE_BORDER_WIDTH;
+        let bar_height = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+        let border_width = srwm::config::DecorationConfig::RESIZE_BORDER_WIDTH;
 
         for window in self.space.elements().rev() {
             let Some(wl_surface) = window.wl_surface() else { continue; };
-            let rule = driftwm::config::applied_rule(&wl_surface);
+            let rule = srwm::config::applied_rule(&wl_surface);
             if let Some(want_widget) = widget_filter {
                 let is_widget = rule.as_ref().is_some_and(|r| r.widget);
                 if is_widget != want_widget { continue; }
@@ -748,8 +748,8 @@ impl DriftWm {
         &self,
         pos: Point<f64, smithay::utils::Logical>,
     ) -> Option<(Window, DecorationHit)> {
-        let bar_height = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
-        let border_width = driftwm::config::DecorationConfig::RESIZE_BORDER_WIDTH;
+        let bar_height = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+        let border_width = srwm::config::DecorationConfig::RESIZE_BORDER_WIDTH;
 
         // Iterate in z-order (topmost first, matching space.elements().rev())
         for window in self.space.elements().rev() {

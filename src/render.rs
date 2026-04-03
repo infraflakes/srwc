@@ -35,7 +35,7 @@ use smithay::wayland::seat::WaylandFocus;
 
 use smithay::backend::renderer::element::{Id, UnderlyingStorage};
 
-use driftwm::canvas::{self, CanvasPos, canvas_to_screen};
+use srwm::canvas::{self, CanvasPos, canvas_to_screen};
 
 /// Render element that tiles a texture across an area using a custom GLSL shader.
 /// Behaves like `PixelShaderElement` for element tracking (stable ID, area-based
@@ -220,7 +220,7 @@ fn shadow_uniforms(
     shadow_radius: f32,
     corner_radius: f32,
 ) -> Vec<Uniform<'static>> {
-    use driftwm::config::DecorationConfig;
+    use srwm::config::DecorationConfig;
     let sc = DecorationConfig::SHADOW_COLOR;
     vec![
         Uniform::new("u_window_rect", (
@@ -516,7 +516,7 @@ fn blur_pass(
 /// Build render elements for X11 override-redirect windows (menus, tooltips, splashes).
 /// Same camera/zoom math as managed windows.
 fn build_override_redirect_elements(
-    state: &crate::state::DriftWm,
+    state: &crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     camera: Point<f64, Logical>,
@@ -564,7 +564,7 @@ fn build_override_redirect_elements(
 /// Build render elements for canvas-positioned layer surfaces (zoomed like windows).
 /// Mirrors the window pipeline: position relative to camera, then RescaleRenderElement for zoom.
 pub fn build_canvas_layer_elements(
-    state: &crate::state::DriftWm,
+    state: &crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     camera: Point<f64, smithay::utils::Logical>,
@@ -611,7 +611,7 @@ fn build_layer_elements(
     output: &Output,
     renderer: &mut GlesRenderer,
     layer: WlrLayer,
-    blur_config: Option<(&driftwm::config::Config, bool, BlurLayer)>,
+    blur_config: Option<(&srwm::config::Config, bool, BlurLayer)>,
 ) -> (Vec<OutputRenderElements>, Vec<BlurRequestData>) {
     let map = layer_map_for_output(output);
     let output_scale = output.current_scale().fractional_scale();
@@ -659,7 +659,7 @@ fn build_layer_elements(
 /// `camera` and `zoom` are from the output being rendered.
 /// Returns `OutputRenderElements` — either xcursor memory buffers or client surface elements.
 pub fn build_cursor_elements(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     camera: Point<f64, smithay::utils::Logical>,
     zoom: f64,
@@ -713,7 +713,7 @@ pub fn build_cursor_elements(
 
 /// Build xcursor memory buffer elements for a named cursor icon.
 fn build_xcursor_elements(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     physical_pos: Point<f64, Physical>,
     name: &'static str,
@@ -765,7 +765,7 @@ fn build_xcursor_elements(
 /// Update the cached background shader element for the current camera/zoom.
 /// Returns (camera_moved, zoom_changed) for the caller's damage logic.
 pub fn update_background_element(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     output: &Output,
     cur_camera: Point<f64, smithay::utils::Logical>,
     cur_zoom: f64,
@@ -804,7 +804,7 @@ pub fn update_background_element(
 /// Build render elements for a locked session: only the lock surface.
 /// No compositor cursor — the lock client manages its own visuals.
 fn compose_lock_frame(
-    state: &crate::state::DriftWm,
+    state: &crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     _cursor_elements: Vec<OutputRenderElements>,
@@ -830,7 +830,7 @@ fn compose_lock_frame(
 /// Assemble all render elements for a frame.
 /// Caller provides cursor elements (built before taking the renderer).
 pub fn compose_frame(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     cursor_elements: Vec<OutputRenderElements>,
@@ -892,8 +892,8 @@ pub fn compose_frame(
         let mut bbox = window.bbox();
         bbox.loc += loc - geom_loc;
         if has_ssd {
-            let r = driftwm::config::DecorationConfig::SHADOW_RADIUS.ceil() as i32;
-            let bar = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+            let r = srwm::config::DecorationConfig::SHADOW_RADIUS.ceil() as i32;
+            let bar = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
             bbox.loc.x -= r;
             bbox.loc.y -= bar + r;
             bbox.size.w += 2 * r;
@@ -905,7 +905,7 @@ pub fn compose_frame(
             loc.x as f64 - geom_loc.x as f64 - camera.x,
             loc.y as f64 - geom_loc.y as f64 - camera.y,
         ));
-        let applied = driftwm::config::applied_rule(&wl_surface);
+        let applied = srwm::config::applied_rule(&wl_surface);
         let is_widget = applied.as_ref().is_some_and(|r| r.widget);
         let wants_blur = blur_enabled && applied.as_ref().is_some_and(|r| r.blur);
         let opacity = applied.as_ref().and_then(|r| r.opacity).unwrap_or(1.0);
@@ -922,7 +922,7 @@ pub fn compose_frame(
         let mut shadow_count = 0usize;
 
         if has_ssd {
-            let bar_height = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+            let bar_height = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
             let is_focused = focused_surface.as_ref().is_some_and(|f| *f == *wl_surface);
 
             // Update decoration state (re-render title bar if needed)
@@ -1008,7 +1008,7 @@ pub fn compose_frame(
             // Shadow element: cached per-window, rebuilt only on resize.
             // Stable Id lets the damage tracker skip unchanged shadow regions.
             if let Some(ref shader) = state.render.shadow_shader {
-                use driftwm::config::DecorationConfig;
+                use srwm::config::DecorationConfig;
                 let radius = DecorationConfig::SHADOW_RADIUS;
                 let r = radius.ceil() as i32;
                 let shadow_w = geom_size.w + 2 * r;
@@ -1062,7 +1062,7 @@ pub fn compose_frame(
             let radius = state.config.decorations.corner_radius as f32;
 
             let rule_forced = applied.as_ref().is_some_and(|r| {
-                r.decoration != driftwm::config::DecorationMode::Client
+                r.decoration != srwm::config::DecorationMode::Client
             });
 
             if !rule_forced {
@@ -1106,7 +1106,7 @@ pub fn compose_frame(
 
                 // Compositor shadow behind CSD windows
                 if let Some(ref shadow_shader) = state.render.shadow_shader {
-                    use driftwm::config::DecorationConfig;
+                    use srwm::config::DecorationConfig;
                     let shadow_radius = DecorationConfig::SHADOW_RADIUS;
                     let sr = shadow_radius.ceil() as i32;
                     let shadow_w = geom_size.w + 2 * sr;
@@ -1175,7 +1175,7 @@ pub fn compose_frame(
                 (render_loc.y * zoom) as i32,
             ));
             let screen_size: Size<i32, Logical> = if has_ssd {
-                let bar = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+                let bar = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
                 (
                     (geom_size.w as f64 * zoom).ceil() as i32,
                     ((geom_size.h + bar) as f64 * zoom).ceil() as i32,
@@ -1190,7 +1190,7 @@ pub fn compose_frame(
                 if has_ssd {
                     Point::from((
                         screen_loc.x,
-                        screen_loc.y - (driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT as f64 * zoom) as i32,
+                        screen_loc.y - (srwm::config::DecorationConfig::TITLE_BAR_HEIGHT as f64 * zoom) as i32,
                     ))
                 } else {
                     // CSD windows: geometry starts at render_loc + geo.loc, not at render_loc
@@ -1323,7 +1323,7 @@ pub fn compose_frame(
 /// crop the window region, run Kawase blur passes, and insert the result.
 #[allow(clippy::too_many_arguments)]
 fn process_blur_requests(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     output_scale: f64,
@@ -1351,7 +1351,7 @@ fn process_blur_requests(
 
     let out_buf_size = output_size.to_logical(1).to_buffer(1, Transform::Normal);
 
-    // Shared full-output FBO for behind-content rendering — cached on DriftWm, reused if size matches
+    // Shared full-output FBO for behind-content rendering — cached on Srwm, reused if size matches
     let mut bg_tex = match state.render.blur_bg_fbo.take() {
         Some((tex, cached_size)) if cached_size == output_size => tex,
         _ => {
@@ -1629,7 +1629,7 @@ struct BlurRequestData {
 
 /// Draw thin outlines showing where other monitors' viewports sit on the canvas.
 fn build_output_outline_elements(
-    state: &crate::state::DriftWm,
+    state: &crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     camera: Point<f64, Logical>,
@@ -1728,7 +1728,7 @@ fn build_output_outline_elements(
 /// Compile background shader and/or load tile image.
 /// Called at startup and on config reload (lazy re-init).
 /// On failure, falls back to `DEFAULT_SHADER` — never leaves background uninitialized.
-pub fn init_background(state: &mut crate::state::DriftWm, renderer: &mut GlesRenderer, initial_size: Size<i32, smithay::utils::Logical>, output_name: &str) {
+pub fn init_background(state: &mut crate::state::Srwm, renderer: &mut GlesRenderer, initial_size: Size<i32, smithay::utils::Logical>, output_name: &str) {
     // Try loading tile image first (if configured and no shader_path)
     if state.config.background.shader_path.is_none()
         && let Some(path) = state.config.background.tile_path.as_deref()
@@ -1796,11 +1796,11 @@ pub fn init_background(state: &mut crate::state::DriftWm, renderer: &mut GlesRen
                 Ok(src) => src,
                 Err(e) => {
                     tracing::error!("Failed to read shader {path}: {e}, using default");
-                    driftwm::config::DEFAULT_SHADER.to_string()
+                    srwm::config::DEFAULT_SHADER.to_string()
                 }
             }
         } else {
-            driftwm::config::DEFAULT_SHADER.to_string()
+            srwm::config::DEFAULT_SHADER.to_string()
         };
 
         let compiled = match renderer.compile_custom_pixel_shader(&shader_source, BG_UNIFORMS) {
@@ -1808,7 +1808,7 @@ pub fn init_background(state: &mut crate::state::DriftWm, renderer: &mut GlesRen
             Err(e) => {
                 tracing::error!("Failed to compile shader: {e}, using default");
                 renderer
-                    .compile_custom_pixel_shader(driftwm::config::DEFAULT_SHADER, BG_UNIFORMS)
+                    .compile_custom_pixel_shader(srwm::config::DEFAULT_SHADER, BG_UNIFORMS)
                     .expect("Default shader must compile")
             }
         };
@@ -1848,14 +1848,14 @@ fn get_capture_state<'a>(
 
 /// Fulfill pending screencopy requests by rendering to offscreen textures.
 pub fn render_screencopy(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     elements: &[OutputRenderElements],
 ) {
     use smithay::backend::renderer::{ExportMem, Renderer};
     use smithay::wayland::shm;
-    use driftwm::protocols::screencopy::ScreencopyBuffer;
+    use srwm::protocols::screencopy::ScreencopyBuffer;
     use std::ptr;
 
     // Extract only requests for this output, keep the rest
@@ -2082,7 +2082,7 @@ fn render_to_dmabuf(
 
 /// Fulfill pending ext-image-copy-capture frames by rendering to offscreen textures.
 pub fn render_capture_frames(
-    state: &mut crate::state::DriftWm,
+    state: &mut crate::state::Srwm,
     renderer: &mut GlesRenderer,
     output: &Output,
     elements: &[OutputRenderElements],
@@ -2208,7 +2208,7 @@ pub fn render_capture_frames(
             capture.frame.presentation_time(tv_sec_hi, tv_sec_lo, tv_nsec);
             capture.frame.ready();
 
-            let frame_data = capture.frame.data::<std::sync::Mutex<driftwm::protocols::image_copy_capture::CaptureFrameData>>();
+            let frame_data = capture.frame.data::<std::sync::Mutex<srwm::protocols::image_copy_capture::CaptureFrameData>>();
             if let Some(fd) = frame_data {
                 let fd = fd.lock().unwrap();
                 state.image_copy_capture_state.frame_done(&fd.session);
@@ -2221,11 +2221,11 @@ pub fn render_capture_frames(
 
 /// Sync foreign-toplevel protocol state with the current window list.
 /// Call once per frame iteration (not per-output).
-pub fn refresh_foreign_toplevels(state: &mut crate::state::DriftWm) {
+pub fn refresh_foreign_toplevels(state: &mut crate::state::Srwm) {
     let keyboard = state.seat.get_keyboard().unwrap();
     let focused = keyboard.current_focus().map(|f| f.0);
     let outputs: Vec<Output> = state.space.outputs().cloned().collect();
-    driftwm::protocols::foreign_toplevel::refresh::<crate::state::DriftWm>(
+    srwm::protocols::foreign_toplevel::refresh::<crate::state::Srwm>(
         &mut state.foreign_toplevel_state,
         &state.space,
         focused.as_ref(),
@@ -2234,7 +2234,7 @@ pub fn refresh_foreign_toplevels(state: &mut crate::state::DriftWm) {
 }
 
 /// Post-render: frame callbacks, space cleanup.
-pub fn post_render(state: &mut crate::state::DriftWm, output: &Output) {
+pub fn post_render(state: &mut crate::state::Srwm, output: &Output) {
     // Frame callbacks to windows
     let time = state.start_time.elapsed();
     for window in state.space.elements() {

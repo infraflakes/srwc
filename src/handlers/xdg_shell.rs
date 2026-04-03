@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use crate::grabs::{MoveSurfaceGrab, ResizeState, ResizeSurfaceGrab};
-use crate::state::{DriftWm, FocusTarget, output_state};
-use driftwm::window_ext::WindowExt;
+use crate::state::{Srwm, FocusTarget, output_state};
+use srwm::window_ext::WindowExt;
 use smithay::{
     delegate_xdg_shell,
     desktop::{
@@ -24,7 +24,7 @@ use smithay::{
     },
 };
 
-impl XdgShellHandler for DriftWm {
+impl XdgShellHandler for Srwm {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
@@ -227,7 +227,7 @@ impl XdgShellHandler for DriftWm {
         serial: Serial,
     ) {
         let wl_surface = surface.wl_surface().clone();
-        if driftwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
+        if srwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
             return;
         }
         let Some(window) = self
@@ -262,7 +262,7 @@ impl XdgShellHandler for DriftWm {
         edges: xdg_toplevel::ResizeEdge,
     ) {
         let wl_surface = surface.wl_surface().clone();
-        if driftwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
+        if srwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
             return;
         }
         let Some(window) = self
@@ -316,21 +316,21 @@ impl XdgShellHandler for DriftWm {
             output,
             last_clamped_location,
             last_x11_configure: None,
-            snap: driftwm::snap::SnapState::default(),
+            snap: srwm::snap::SnapState::default(),
         };
         pointer.set_grab(self, grab, serial, Focus::Clear);
     }
 }
 
-delegate_xdg_shell!(DriftWm);
+delegate_xdg_shell!(Srwm);
 
 /// Validate that the pointer has an active grab starting on the given surface.
 /// Returns the `GrabStartData` if the button click that started the grab
 /// originated on this surface (preventing a client from stealing another's grab).
 fn check_grab(
-    pointer: &smithay::input::pointer::PointerHandle<DriftWm>,
+    pointer: &smithay::input::pointer::PointerHandle<Srwm>,
     surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
-) -> Option<GrabStartData<DriftWm>> {
+) -> Option<GrabStartData<Srwm>> {
     let start_data = pointer.grab_start_data()?;
     let (focus, _) = start_data.focus.as_ref()?;
 
@@ -342,7 +342,7 @@ fn check_grab(
     Some(start_data)
 }
 
-impl DriftWm {
+impl Srwm {
     /// Apply xdg positioner constraint adjustments so the popup stays within
     /// the output bounds. Works for both xdg-toplevel and layer-shell parents.
     pub(crate) fn unconstrain_popup(&self, popup: &PopupKind) {
@@ -387,7 +387,7 @@ impl DriftWm {
                 .unwrap_or_default();
             // Constrain to the visible canvas area (accounts for zoom)
             let viewport_size = output_geo.size;
-            let mut target = driftwm::canvas::visible_canvas_rect(
+            let mut target = srwm::canvas::visible_canvas_rect(
                 self.camera().to_i32_round(),
                 viewport_size,
                 self.zoom(),

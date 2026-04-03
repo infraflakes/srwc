@@ -1,5 +1,5 @@
 [package]
-name = "driftwm"
+name = "srwm"
 version = "0.1.4"
 edition = "2024"
 license = "GPL-3.0-or-later"

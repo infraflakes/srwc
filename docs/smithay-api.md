@@ -1,6 +1,6 @@
 # Smithay 0.7.0 API Reference
 
-Quick reference for key smithay APIs used in driftwm. See the source at
+Quick reference for key smithay APIs used in srwm. See the source at
 `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/smithay-0.7.0/`.
 
 ## PointerGrab System
@@ -119,9 +119,9 @@ impl CursorImageStatus {
 Source: `src/wayland/cursor_shape.rs`
 ```rust
 // Init: requires TabletSeatHandler impl (even empty)
-let state = CursorShapeManagerState::new::<DriftWm>(&display_handle);
-delegate_cursor_shape!(DriftWm);
-// Also need: impl TabletSeatHandler for DriftWm {}
+let state = CursorShapeManagerState::new::<Srwm>(&display_handle);
+delegate_cursor_shape!(Srwm);
+// Also need: impl TabletSeatHandler for Srwm {}
 ```
 
 ### MemoryRenderBuffer
@@ -238,8 +238,8 @@ let images = xcursor::parser::parse_xcursor(&std::fs::read(path)?)?;
 
 ### Compositor / Protocol Essentials
 
-- **Must call `on_commit_buffer_handler::<DriftWm>(surface)`** in `CompositorHandler::commit()` — NOT done by `delegate_compositor!`. Without it, `RendererSurfaceState` is never populated, `surface_view` stays None, `bbox_from_surface_tree()` returns 0x0, windows invisible.
-- **Must call `output.create_global::<DriftWm>(&display_handle)`** — `space.map_output()` is internal only; clients need a `wl_output` global to see monitors.
+- **Must call `on_commit_buffer_handler::<Srwm>(surface)`** in `CompositorHandler::commit()` — NOT done by `delegate_compositor!`. Without it, `RendererSurfaceState` is never populated, `surface_view` stays None, `bbox_from_surface_tree()` returns 0x0, windows invisible.
+- **Must call `output.create_global::<Srwm>(&display_handle)`** — `space.map_output()` is internal only; clients need a `wl_output` global to see monitors.
 - **`ToplevelSurface::send_configure()`** must be called in `new_toplevel` — clients won't render until they receive an initial configure.
 - **`PopupSurface::send_configure()`** must be called in `new_popup` — same as toplevels. Also set geometry from positioner: `surface.with_pending_state(|s| s.geometry = positioner.get_geometry())`.
 - **Cross-app clipboard requires `set_data_device_focus` + `set_primary_focus`** in `SeatHandler::focus_changed()`. Without this, newly focused clients don't receive `wl_data_device.selection` events and can't paste from other apps. Extract client via `dh.get_client(surface.id()).ok()`.
@@ -249,7 +249,7 @@ let images = xcursor::parser::parse_xcursor(&std::fs::read(path)?)?;
 - **Winit backend needs `Transform::Flipped180`** on the output — EGL Y-axis is inverted relative to Wayland coordinates.
 - **`Transform::Normal` for udev** — DRM handles orientation natively.
 - **WAYLAND_DISPLAY must NOT be set before `winit::init()`** — winit connects to the parent compositor; setting our socket first causes a deadlock.
-- **Backend on state** — winit backend stored as `Option<WinitGraphicsBackend<GlesRenderer>>` on DriftWm. Timer closure uses take/put pattern to split borrows. Required for DmabufHandler to access renderer.
+- **Backend on state** — winit backend stored as `Option<WinitGraphicsBackend<GlesRenderer>>` on Srwm. Timer closure uses take/put pattern to split borrows. Required for DmabufHandler to access renderer.
 - **DMA-BUF v3 (create_global)** sufficient for winit backend — advertises formats, no device info. v4 (create_global_with_default_feedback) adds render device hints for multi-GPU. `ImportDma::dmabuf_formats()` on GlesRenderer gets formats from EGL.
 - Benign `EGL BAD_SURFACE` error on first frame is from `buffer_age()` before the surface is ready; `unwrap_or(0)` handles it.
 

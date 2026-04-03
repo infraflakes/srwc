@@ -5,9 +5,9 @@ use smithay::{
     wayland::{compositor::with_states, seat::WaylandFocus},
 };
 
-use driftwm::config;
-use driftwm::window_ext::WindowExt;
-use super::DriftWm;
+use srwm::config;
+use srwm::window_ext::WindowExt;
+use super::Srwm;
 
 /// Per-window fit state stored in the surface data_map via Mutex.
 /// Some(size) = currently fit, holding the pre-fit size.
@@ -35,7 +35,7 @@ pub fn clear_fit_state(wl_surface: &WlSurface) {
     });
 }
 
-impl DriftWm {
+impl Srwm {
     pub fn fit_window(&mut self, window: &Window) {
         let Some(wl_surface) = window.wl_surface() else { return };
         if config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {

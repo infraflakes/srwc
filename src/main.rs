@@ -7,7 +7,7 @@ mod input;
 mod render;
 mod state;
 
-use state::{ClientState, DriftWm};
+use state::{ClientState, Srwm};
 use std::sync::Arc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,13 +20,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     if std::env::args().any(|a| a == "--version" || a == "-V") {
-        println!("driftwm {}", env!("CARGO_PKG_VERSION"));
+        println!("srwm {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
 
     // --check-config: validate config and exit
     if std::env::args().any(|a| a == "--check-config") {
-        let _config = driftwm::config::Config::load();
+        let _config = srwm::config::Config::load();
         tracing::info!("Config OK");
         return Ok(());
     }
@@ -44,15 +44,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
 
     // Create calloop event loop
-    let mut event_loop: smithay::reexports::calloop::EventLoop<DriftWm> =
+    let mut event_loop: smithay::reexports::calloop::EventLoop<Srwm> =
         smithay::reexports::calloop::EventLoop::try_new()?;
 
     // Create Wayland display
     let display =
-        smithay::reexports::wayland_server::Display::<DriftWm>::new()?;
+        smithay::reexports::wayland_server::Display::<Srwm>::new()?;
 
     // Build compositor state
-    let mut data = DriftWm::new(
+    let mut data = Srwm::new(
         display.handle(),
         event_loop.handle(),
         event_loop.get_signal(),
@@ -74,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         smithay::reexports::calloop::Interest::READ,
         smithay::reexports::calloop::Mode::Level,
     );
-    event_loop.handle().insert_source(display_source, |_, display, data: &mut DriftWm| {
+    event_loop.handle().insert_source(display_source, |_, display, data: &mut Srwm| {
         // SAFETY: we never drop the Display while the Generic source is alive
         unsafe { display.get_mut() }.dispatch_clients(data).ok();
         Ok(smithay::reexports::calloop::PostAction::Continue)
@@ -91,11 +91,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Standard Wayland session env vars for child processes
     unsafe { std::env::set_var("WAYLAND_DISPLAY", &socket_name) };
     unsafe { std::env::set_var("XDG_SESSION_TYPE", "wayland") };
-    unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "driftwm") };
+    unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "srwm") };
     // Toolkit env vars (MOZ_ENABLE_WAYLAND, QT_QPA_PLATFORM, etc.) are now
     // set in Config::load() with user [env] overrides taking precedence.
     unsafe { std::env::set_var("XDG_SESSION_CLASS", "user") };
-    unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "driftwm") };
+    unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "srwm") };
 
     // Export only session-level vars to systemd and D-Bus.
     // Toolkit hints (MOZ_ENABLE_WAYLAND, QT_QPA_PLATFORM, etc.) stay in our
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     event_loop
         .handle()
-        .insert_source(listening_socket, |stream, _, data: &mut DriftWm| {
+        .insert_source(listening_socket, |stream, _, data: &mut Srwm| {
             tracing::info!("New client connected");
             if let Err(e) = data
                 .display_handle
@@ -135,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Config file watcher: poll mtime every 500ms
     {
-        let config_path = driftwm::config::config_path();
+        let config_path = srwm::config::config_path();
         data.config_file_mtime = std::fs::metadata(&config_path)
             .and_then(|m| m.modified())
             .ok();
@@ -143,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let timer = smithay::reexports::calloop::timer::Timer::from_duration(
             std::time::Duration::from_millis(500),
         );
-        event_loop.handle().insert_source(timer, move |_, _, data: &mut DriftWm| {
+        event_loop.handle().insert_source(timer, move |_, _, data: &mut Srwm| {
             let current_mtime = std::fs::metadata(&config_path)
                 .and_then(|m| m.modified())
                 .ok();

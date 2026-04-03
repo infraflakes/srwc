@@ -68,9 +68,9 @@ use smithay::reexports::drm::control::crtc;
 
 use crate::backend::Backend;
 use crate::input::gestures::GestureState;
-use driftwm::canvas::MomentumState;
-use driftwm::config::Config;
-use driftwm::window_ext::WindowExt;
+use srwm::canvas::MomentumState;
+use srwm::config::Config;
+use srwm::window_ext::WindowExt;
 
 /// A layer surface placed at a fixed canvas position (instead of screen-anchored via LayerMap).
 /// Created when a layer surface's namespace matches a window rule with `position`.
@@ -158,9 +158,9 @@ pub struct FullscreenState {
 
 /// Per-output viewport state, stored on each `Output` via `UserDataMap`.
 /// Wrapped in `Mutex` since `UserDataMap` requires `Sync`.
-/// Fields that are !Send (PixelShaderElement) stay on DriftWm.
+/// Fields that are !Send (PixelShaderElement) stay on Srwm.
 /// Fields with non-Copy ownership types (fullscreen, lock_surface)
-/// stay on DriftWm for Phase 1 — moved here when multi-output needs them.
+/// stay on Srwm for Phase 1 — moved here when multi-output needs them.
 #[derive(Clone)]
 pub struct OutputState {
     pub camera: Point<f64, Logical>,
@@ -245,11 +245,11 @@ pub fn output_state(output: &Output) -> MutexGuard<'_, OutputState> {
 }
 
 /// Central compositor state.
-pub struct DriftWm {
+pub struct Srwm {
     // -- global: infrastructure --
     pub start_time: Instant,
     pub display_handle: DisplayHandle,
-    pub loop_handle: LoopHandle<'static, DriftWm>,
+    pub loop_handle: LoopHandle<'static, Srwm>,
     pub loop_signal: LoopSignal,
 
     // -- global: desktop --
@@ -262,11 +262,11 @@ pub struct DriftWm {
     pub shm_state: ShmState,
     #[allow(dead_code)]
     pub output_manager_state: OutputManagerState,
-    pub seat_state: SeatState<DriftWm>,
+    pub seat_state: SeatState<Srwm>,
     pub data_device_state: DataDeviceState,
 
     // -- global: input --
-    pub seat: Seat<DriftWm>,
+    pub seat: Seat<Srwm>,
 
     // -- global: cursor --
     pub cursor: CursorState,
@@ -302,21 +302,21 @@ pub struct DriftWm {
     pub keyboard_shortcuts_inhibit_state: KeyboardShortcutsInhibitState,
     #[allow(dead_code)]
     pub idle_inhibit_state: IdleInhibitManagerState,
-    pub idle_notifier_state: IdleNotifierState<DriftWm>,
+    pub idle_notifier_state: IdleNotifierState<Srwm>,
     #[allow(dead_code)]
     pub presentation_state: PresentationState,
     #[allow(dead_code)]
     pub decoration_state: XdgDecorationState,
     pub layer_shell_state: WlrLayerShellState,
-    pub foreign_toplevel_state: driftwm::protocols::foreign_toplevel::ForeignToplevelManagerState,
-    pub screencopy_state: driftwm::protocols::screencopy::ScreencopyManagerState,
-    pub output_management_state: driftwm::protocols::output_management::OutputManagementState,
-    pub pending_screencopies: Vec<driftwm::protocols::screencopy::Screencopy>,
+    pub foreign_toplevel_state: srwm::protocols::foreign_toplevel::ForeignToplevelManagerState,
+    pub screencopy_state: srwm::protocols::screencopy::ScreencopyManagerState,
+    pub output_management_state: srwm::protocols::output_management::OutputManagementState,
+    pub pending_screencopies: Vec<srwm::protocols::screencopy::Screencopy>,
     #[allow(dead_code)]
     pub image_capture_source_state:
-        driftwm::protocols::image_capture_source::ImageCaptureSourceState,
-    pub image_copy_capture_state: driftwm::protocols::image_copy_capture::ImageCopyCaptureState,
-    pub pending_captures: Vec<driftwm::protocols::image_copy_capture::PendingCapture>,
+        srwm::protocols::image_capture_source::ImageCaptureSourceState,
+    pub image_copy_capture_state: srwm::protocols::image_copy_capture::ImageCopyCaptureState,
+    pub pending_captures: Vec<srwm::protocols::image_copy_capture::PendingCapture>,
     pub xdg_foreign_state: XdgForeignState,
     pub session_lock_manager_state: SessionLockManagerState,
     pub session_lock: SessionLock,
@@ -339,7 +339,7 @@ pub struct DriftWm {
     pub cycle_state: Option<usize>,
 
     // -- global: key repeat --
-    pub held_action: Option<(u32, driftwm::config::Action, Instant)>,
+    pub held_action: Option<(u32, srwm::config::Action, Instant)>,
 
     // -- per-output: fullscreen (keyed by output, since FullscreenState has Window) --
     pub fullscreen: HashMap<Output, FullscreenState>,
@@ -412,10 +412,10 @@ impl ClientData for ClientState {
     fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
 }
 
-impl DriftWm {
+impl Srwm {
     pub fn new(
         dh: DisplayHandle,
-        loop_handle: LoopHandle<'static, DriftWm>,
+        loop_handle: LoopHandle<'static, Srwm>,
         loop_signal: LoopSignal,
     ) -> Self {
         let compositor_state = CompositorState::new::<Self>(&dh);
@@ -449,24 +449,24 @@ impl DriftWm {
         let decoration_state = XdgDecorationState::new::<Self>(&dh);
         let layer_shell_state = WlrLayerShellState::new::<Self>(&dh);
         let foreign_toplevel_state =
-            driftwm::protocols::foreign_toplevel::ForeignToplevelManagerState::new::<Self, _>(
+            srwm::protocols::foreign_toplevel::ForeignToplevelManagerState::new::<Self, _>(
                 &dh,
                 |_| true,
             );
         let screencopy_state =
-            driftwm::protocols::screencopy::ScreencopyManagerState::new::<Self, _>(&dh, |_| true);
+            srwm::protocols::screencopy::ScreencopyManagerState::new::<Self, _>(&dh, |_| true);
         let image_capture_source_state =
-            driftwm::protocols::image_capture_source::ImageCaptureSourceState::new::<Self, _>(
+            srwm::protocols::image_capture_source::ImageCaptureSourceState::new::<Self, _>(
                 &dh,
                 |_| true,
             );
         let image_copy_capture_state =
-            driftwm::protocols::image_copy_capture::ImageCopyCaptureState::new::<Self, _>(
+            srwm::protocols::image_copy_capture::ImageCopyCaptureState::new::<Self, _>(
                 &dh,
                 |_| true,
             );
         let output_management_state =
-            driftwm::protocols::output_management::OutputManagementState::new::<Self, _>(
+            srwm::protocols::output_management::OutputManagementState::new::<Self, _>(
                 &dh,
                 |_| true,
             );
@@ -597,7 +597,7 @@ impl DriftWm {
             .elements()
             .filter(|w| {
                 !w.wl_surface()
-                    .and_then(|s| driftwm::config::applied_rule(&s))
+                    .and_then(|s| srwm::config::applied_rule(&s))
                     .is_some_and(|r| r.widget)
             })
             .cloned()
@@ -828,7 +828,7 @@ impl DriftWm {
         pointer.button(
             self,
             &smithay::input::pointer::ButtonEvent {
-                button: driftwm::config::BTN_MIDDLE,
+                button: srwm::config::BTN_MIDDLE,
                 state: smithay::backend::input::ButtonState::Pressed,
                 serial,
                 time: press_time,
@@ -840,7 +840,7 @@ impl DriftWm {
             pointer.button(
                 self,
                 &smithay::input::pointer::ButtonEvent {
-                    button: driftwm::config::BTN_MIDDLE,
+                    button: srwm::config::BTN_MIDDLE,
                     state: smithay::backend::input::ButtonState::Released,
                     serial,
                     time: rt,
@@ -899,7 +899,7 @@ impl DriftWm {
                 let os = output_state(output);
                 let size = output_logical_size(output);
                 let visible =
-                    driftwm::canvas::visible_canvas_rect(os.camera.to_i32_round(), size, os.zoom);
+                    srwm::canvas::visible_canvas_rect(os.camera.to_i32_round(), size, os.zoom);
                 drop(os);
                 visible.contains(Point::from((center.x as i32, center.y as i32)))
             })
@@ -911,7 +911,7 @@ impl DriftWm {
     pub fn output_in_direction(
         &self,
         from: &Output,
-        dir: &driftwm::config::Direction,
+        dir: &srwm::config::Direction,
     ) -> Option<Output> {
         let from_center: Point<f64, Logical> = {
             let os = output_state(from);
@@ -977,8 +977,8 @@ impl DriftWm {
         canvas_pos: Point<f64, Logical>,
         os: &OutputState,
     ) -> Point<f64, Logical> {
-        let screen = driftwm::canvas::canvas_to_screen(
-            driftwm::canvas::CanvasPos(canvas_pos),
+        let screen = srwm::canvas::canvas_to_screen(
+            srwm::canvas::CanvasPos(canvas_pos),
             os.camera,
             os.zoom,
         )
@@ -1000,7 +1000,7 @@ impl DriftWm {
             layout_pos.x - os.layout_position.x as f64,
             layout_pos.y - os.layout_position.y as f64,
         ));
-        driftwm::canvas::screen_to_canvas(driftwm::canvas::ScreenPos(screen), os.camera, os.zoom).0
+        srwm::canvas::screen_to_canvas(srwm::canvas::ScreenPos(screen), os.camera, os.zoom).0
     }
 
     /// Batch-access per-output state under a single mutex lock.
@@ -1118,7 +1118,7 @@ impl DriftWm {
         window
             .wl_surface()
             .filter(|s| self.decorations.contains_key(&s.id()))
-            .map_or(0, |_| driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT)
+            .map_or(0, |_| srwm::config::DecorationConfig::TITLE_BAR_HEIGHT)
     }
 
     /// Visual center of a window, accounting for SSD title bar above content.
@@ -1135,7 +1135,7 @@ impl DriftWm {
     /// Offset a spawn position so it doesn't overlap an existing window.
     /// Walks in diagonal steps (title bar height) until no window is within a few pixels.
     pub fn cascade_position(&self, mut pos: (i32, i32), skip: &Window) -> (i32, i32) {
-        let step = driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
+        let step = srwm::config::DecorationConfig::TITLE_BAR_HEIGHT;
         loop {
             let dominated = self.space.elements().any(|w| {
                 w != skip
@@ -1153,7 +1153,7 @@ impl DriftWm {
 
     /// Hot-reload config from disk. On parse failure, logs an error and keeps the old config.
     pub fn reload_config(&mut self) {
-        let config_path = driftwm::config::config_path();
+        let config_path = srwm::config::config_path();
         let contents = match std::fs::read_to_string(&config_path) {
             Ok(c) => c,
             Err(e) => {
@@ -1164,7 +1164,7 @@ impl DriftWm {
                 return;
             }
         };
-        let mut new_config = match driftwm::config::Config::from_toml(&contents) {
+        let mut new_config = match srwm::config::Config::from_toml(&contents) {
             Ok(c) => c,
             Err(e) => {
                 tracing::error!("Config reload: parse error: {e}");
@@ -1298,9 +1298,9 @@ impl DriftWm {
     }
 
     /// Build snap target rectangles for all windows except `exclude`, skipping widgets.
-    pub fn snap_targets(&self, exclude: &WlSurface) -> (Vec<driftwm::snap::SnapRect>, i32) {
+    pub fn snap_targets(&self, exclude: &WlSurface) -> (Vec<srwm::snap::SnapRect>, i32) {
         let self_bar = if self.decorations.contains_key(&exclude.id()) {
-            driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT
+            srwm::config::DecorationConfig::TITLE_BAR_HEIGHT
         } else {
             0
         };
@@ -1308,15 +1308,15 @@ impl DriftWm {
         for w in self.space.elements() {
             let Some(surface) = w.wl_surface() else { continue };
             if *surface == *exclude { continue }
-            if driftwm::config::applied_rule(&surface).is_some_and(|r| r.widget) { continue }
+            if srwm::config::applied_rule(&surface).is_some_and(|r| r.widget) { continue }
             let Some(loc) = self.space.element_location(w) else { continue };
             let size = w.geometry().size;
             let bar = if self.decorations.contains_key(&surface.id()) {
-                driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT
+                srwm::config::DecorationConfig::TITLE_BAR_HEIGHT
             } else {
                 0
             };
-            others.push(driftwm::snap::SnapRect {
+            others.push(srwm::snap::SnapRect {
                 x_low: loc.x as f64,
                 x_high: loc.x as f64 + size.w as f64,
                 y_low: loc.y as f64 - bar as f64,
@@ -1330,7 +1330,7 @@ impl DriftWm {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use driftwm::canvas::MomentumState;
+    use srwm::canvas::MomentumState;
 
     fn mock_output_state(
         camera: (f64, f64),
@@ -1360,8 +1360,8 @@ mod tests {
     fn canvas_to_layout_round_trip_zoom_1() {
         let os = mock_output_state((100.0, 200.0), 1.0, (0, 0));
         let canvas = Point::from((150.0, 250.0));
-        let layout = DriftWm::canvas_to_layout_pos(canvas, &os);
-        let back = DriftWm::layout_to_canvas_pos(layout, &os);
+        let layout = Srwm::canvas_to_layout_pos(canvas, &os);
+        let back = Srwm::layout_to_canvas_pos(layout, &os);
         assert!((back.x - canvas.x).abs() < 0.001);
         assert!((back.y - canvas.y).abs() < 0.001);
     }
@@ -1370,8 +1370,8 @@ mod tests {
     fn canvas_to_layout_round_trip_with_zoom() {
         let os = mock_output_state((50.0, 75.0), 2.0, (1920, 0));
         let canvas = Point::from((80.0, 100.0));
-        let layout = DriftWm::canvas_to_layout_pos(canvas, &os);
-        let back = DriftWm::layout_to_canvas_pos(layout, &os);
+        let layout = Srwm::canvas_to_layout_pos(canvas, &os);
+        let back = Srwm::layout_to_canvas_pos(layout, &os);
         assert!((back.x - canvas.x).abs() < 0.001);
         assert!((back.y - canvas.y).abs() < 0.001);
     }
@@ -1383,7 +1383,7 @@ mod tests {
         // layout = screen + layout_position = -100+1920 = 1820, -300+0 = -300
         let os = mock_output_state((100.0, 200.0), 2.0, (1920, 0));
         let canvas = Point::from((50.0, 50.0));
-        let layout = DriftWm::canvas_to_layout_pos(canvas, &os);
+        let layout = Srwm::canvas_to_layout_pos(canvas, &os);
         assert!((layout.x - 1820.0).abs() < 0.001);
         assert!((layout.y - (-300.0)).abs() < 0.001);
     }
@@ -1395,7 +1395,7 @@ mod tests {
         // canvas = screen / zoom + camera = 0 + 500 = 500, 0 + 300 = 300
         let os = mock_output_state((500.0, 300.0), 1.0, (1920, 0));
         let layout = Point::from((1920.0, 0.0));
-        let canvas = DriftWm::layout_to_canvas_pos(layout, &os);
+        let canvas = Srwm::layout_to_canvas_pos(layout, &os);
         assert!((canvas.x - 500.0).abs() < 0.001);
         assert!((canvas.y - 300.0).abs() < 0.001);
     }
@@ -1407,14 +1407,14 @@ mod tests {
 
         let canvas = Point::from((600.0, 300.0));
         // Through output A
-        let layout_a = DriftWm::canvas_to_layout_pos(canvas, &os_a);
-        let back_a = DriftWm::layout_to_canvas_pos(layout_a, &os_a);
+        let layout_a = Srwm::canvas_to_layout_pos(canvas, &os_a);
+        let back_a = Srwm::layout_to_canvas_pos(layout_a, &os_a);
         assert!((back_a.x - canvas.x).abs() < 0.001);
         assert!((back_a.y - canvas.y).abs() < 0.001);
 
         // Through output B
-        let layout_b = DriftWm::canvas_to_layout_pos(canvas, &os_b);
-        let back_b = DriftWm::layout_to_canvas_pos(layout_b, &os_b);
+        let layout_b = Srwm::canvas_to_layout_pos(canvas, &os_b);
+        let back_b = Srwm::layout_to_canvas_pos(layout_b, &os_b);
         assert!((back_b.x - canvas.x).abs() < 0.001);
         assert!((back_b.y - canvas.y).abs() < 0.001);
     }

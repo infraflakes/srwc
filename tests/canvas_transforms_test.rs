@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use driftwm::canvas::{
+use srwm::canvas::{
     CanvasPos, MomentumState, ScreenPos,
     canvas_to_screen, screen_to_canvas,
 };

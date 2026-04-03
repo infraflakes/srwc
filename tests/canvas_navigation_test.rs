@@ -1,5 +1,5 @@
-use driftwm::canvas::{camera_to_center_window, find_nearest};
-use driftwm::config::Direction;
+use srwm::canvas::{camera_to_center_window, find_nearest};
+use srwm::config::Direction;
 use smithay::utils::{Logical, Point, Size};
 use std::f64::consts::FRAC_1_SQRT_2;
 

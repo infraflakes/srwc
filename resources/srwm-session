@@ -1,5 +1,5 @@
 #!/bin/sh
-# driftwm-session — launched by display manager (GDM) instead of bare driftwm.
+# srwm-session — launched by display manager (GDM) instead of bare srwm.
 # Re-execs through login shell to pick up .profile / PAM env vars,
 # then imports the full environment into systemd/D-Bus so services like
 # gnome-keyring (PAM-unlocked by GDM) are visible to all activated units.
@@ -24,9 +24,9 @@ hash dbus-update-activation-environment 2>/dev/null && \
 systemctl --user start graphical-session-pre.target
 systemctl --user start graphical-session.target
 
-# Run driftwm with logs captured for debugging.
-DRIFTWM_LOG="${XDG_RUNTIME_DIR:-/tmp}/driftwm.log"
-driftwm 2>"$DRIFTWM_LOG"
+# Run srwm with logs captured for debugging.
+DRIFTWM_LOG="${XDG_RUNTIME_DIR:-/tmp}/srwm.log"
+srwm 2>"$DRIFTWM_LOG"
 STATUS=$?
 
 # Compositor exited — tear down the graphical session so dependent

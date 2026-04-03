@@ -18,13 +18,13 @@ use std::time::Duration;
 
 use crate::render::build_cursor_elements;
 use crate::backend::Backend;
-use crate::state::{DriftWm, init_output_state};
+use crate::state::{Srwm, init_output_state};
 
 /// Initialize the winit backend: create a window, set up the output, and
 /// start the render loop timer.
 pub fn init_winit(
-    event_loop: &mut EventLoop<'static, DriftWm>,
-    data: &mut DriftWm,
+    event_loop: &mut EventLoop<'static, Srwm>,
+    data: &mut Srwm,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (backend, mut winit_evt) = winit::init::<GlesRenderer>()?;
     let size = backend.window_size();
@@ -36,7 +36,7 @@ pub fn init_winit(
         PhysicalProperties {
             size: (0, 0).into(), // unknown physical size
             subpixel: Subpixel::Unknown,
-            make: "driftwm".to_string(),
+            make: "srwm".to_string(),
             model: "winit".to_string(),
         },
     );
@@ -48,7 +48,7 @@ pub fn init_winit(
     output.set_preferred(mode);
 
     // Advertise the output as a wl_output global so clients can see it
-    output.create_global::<crate::state::DriftWm>(&data.display_handle);
+    output.create_global::<crate::state::Srwm>(&data.display_handle);
 
     // Create DMA-BUF global — advertise GPU buffer formats to clients
     let formats = data
@@ -59,7 +59,7 @@ pub fn init_winit(
         .dmabuf_formats();
     let dmabuf_global = data
         .dmabuf_state
-        .create_global::<crate::state::DriftWm>(&data.display_handle, formats);
+        .create_global::<crate::state::Srwm>(&data.display_handle, formats);
     data.dmabuf_global = Some(dmabuf_global);
 
     {
@@ -92,14 +92,14 @@ pub fn init_winit(
 
     // Notify output management clients about the winit output
     {
-        use driftwm::protocols::output_management::{OutputHeadState, ModeInfo};
+        use srwm::protocols::output_management::{OutputHeadState, ModeInfo};
         let mut heads = std::collections::HashMap::new();
         heads.insert(
             "winit".to_string(),
             OutputHeadState {
                 name: "winit".to_string(),
-                description: "driftwm winit virtual output".to_string(),
-                make: "driftwm".to_string(),
+                description: "srwm winit virtual output".to_string(),
+                make: "srwm".to_string(),
                 model: "winit".to_string(),
                 serial_number: String::new(),
                 physical_size: (0, 0),
@@ -115,7 +115,7 @@ pub fn init_winit(
                 scale: 1.0,
             },
         );
-        driftwm::protocols::output_management::notify_changes::<crate::state::DriftWm>(
+        srwm::protocols::output_management::notify_changes::<crate::state::Srwm>(
             &mut data.output_management_state,
             heads,
         );

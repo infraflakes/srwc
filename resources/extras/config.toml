@@ -1,5 +1,5 @@
-# driftwm — personal config (symlink to ~/.config/driftwm/config.toml)
-# ln -sf ~/Documents/work/scripts/driftwm/extras/config.toml ~/.config/driftwm/config.toml
+# srwm — personal config (symlink to ~/.config/srwm/config.toml)
+# ln -sf ~/Documents/work/scripts/srwm/extras/config.toml ~/.config/srwm/config.toml
 
 autostart = [
     "eval $(gnome-keyring-daemon --start --components=secrets,ssh) && systemctl --user import-environment SSH_AUTH_SOCK GNOME_KEYRING_CONTROL && dbus-update-activation-environment SSH_AUTH_SOCK GNOME_KEYRING_CONTROL",
@@ -9,9 +9,9 @@ autostart = [
      "waybar -c ~/.config/waybar/taskbar.jsonc -s ~/.config/waybar/taskbar.css",
      "sleep 1 && waybar -c ~/.config/waybar/tray.jsonc -s ~/.config/waybar/tray.css",
      "vorta -d",
-     "~/Documents/work/scripts/driftwm/extras/widgets/launch.sh",
-     "~/Documents/work/scripts/driftwm/extras/scripts/battery_notify.sh",
-     "swayidle -w timeout 300 'brightnessctl -s set 10%' resume 'brightnessctl -r' timeout 330 '~/Documents/work/scripts/driftwm/extras/scripts/lock.sh' timeout 600 'systemctl suspend' before-sleep '~/Documents/work/scripts/driftwm/extras/scripts/lock.sh'",
+     "~/Documents/work/scripts/srwm/extras/widgets/launch.sh",
+     "~/Documents/work/scripts/srwm/extras/scripts/battery_notify.sh",
+     "swayidle -w timeout 300 'brightnessctl -s set 10%' resume 'brightnessctl -r' timeout 330 '~/Documents/work/scripts/srwm/extras/scripts/lock.sh' timeout 600 'systemctl suspend' before-sleep '~/Documents/work/scripts/srwm/extras/scripts/lock.sh'",
 ]
 
 focus_follows_mouse = true
@@ -31,7 +31,7 @@ bg_color = "#FDF6E3"
 fg_color = "#5C6A72"
 
 [background]
-shader_path = "/usr/local/share/driftwm/wallpapers/pink_cloud.glsl"
+shader_path = "/usr/local/share/srwm/wallpapers/pink_cloud.glsl"
 
 [output.outline]
 color="#FDF6E3"
@@ -39,7 +39,7 @@ color="#FDF6E3"
 [keybindings]
 "mod+return" = "exec ptyxis -s"
 "mod+d" = "exec fuzzel"
-"mod+l" = "spawn ~/Documents/work/scripts/driftwm/extras/scripts/lock.sh"
+"mod+l" = "spawn ~/Documents/work/scripts/srwm/extras/scripts/lock.sh"
 "mod+n" = "spawn swaync-client -t"
 # swayosd instead of default wpctl/brightnessctl
 "XF86AudioRaiseVolume" = "spawn swayosd-client --output-volume raise"
@@ -47,7 +47,7 @@ color="#FDF6E3"
 "XF86AudioMute" = "spawn swayosd-client --output-volume mute-toggle"
 "XF86MonBrightnessUp" = "spawn swayosd-client --brightness raise"
 "XF86MonBrightnessDown" = "spawn swayosd-client --brightness lower"
-"mod+s" = "exec ~/Documents/work/scripts/driftwm/extras/scripts/window-search.sh"
+"mod+s" = "exec ~/Documents/work/scripts/srwm/extras/scripts/window-search.sh"
 
 [[outputs]]
 name = "HDMI-A-1"

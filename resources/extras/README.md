@@ -1,10 +1,10 @@
 # Rice
 
-Personal config files for my driftwm setup.
+Personal config files for my srwm setup.
 
 | Component     | Tool                                                                                                                  | Config        |
 | ------------- | --------------------------------------------------------------------------------------------------------------------- | ------------- |
-| Compositor    | [driftwm](../)                                                                                                        | `config.toml` |
+| Compositor    | [srwm](../)                                                                                                        | `config.toml` |
 | Taskbar, tray | [waybar](https://github.com/Alexays/Waybar)                                                                           | `waybar/`     |
 | Launcher      | [fuzzel](https://codeberg.org/dnkl/fuzzel)                                                                            | `fuzzel/`     |
 | Notifications | [swaync](https://github.com/ErikReider/SwayNotificationCenter)                                                        | `swaync/`     |

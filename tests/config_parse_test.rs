@@ -1,4 +1,4 @@
-use driftwm::config::{
+use srwm::config::{
     Action, BindingContext, Config, ContinuousAction, Direction, GestureConfigEntry, ModKey,
     MouseAction, MouseTrigger, ThresholdAction, BTN_LEFT, BTN_RIGHT,
     parse_action, parse_direction, parse_gesture_binding, parse_gesture_config_entry,
@@ -307,28 +307,28 @@ fn default_mouse_bindings_context_fallback_to_anywhere() {
 
 #[test]
 fn parse_gesture_trigger_3_finger_swipe() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = parse_gesture_trigger("3-finger-swipe").unwrap();
     assert_eq!(trigger, GestureTrigger::Swipe { fingers: 3 });
 }
 
 #[test]
 fn parse_gesture_trigger_4_finger_pinch_in() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = parse_gesture_trigger("4-finger-pinch-in").unwrap();
     assert_eq!(trigger, GestureTrigger::PinchIn { fingers: 4 });
 }
 
 #[test]
 fn parse_gesture_trigger_3_finger_doubletap_swipe() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = parse_gesture_trigger("3-finger-doubletap-swipe").unwrap();
     assert_eq!(trigger, GestureTrigger::DoubletapSwipe { fingers: 3 });
 }
 
 #[test]
 fn parse_gesture_trigger_4_finger_hold() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = parse_gesture_trigger("4-finger-hold").unwrap();
     assert_eq!(trigger, GestureTrigger::Hold { fingers: 4 });
 }
@@ -343,7 +343,7 @@ fn parse_gesture_trigger_invalid_finger_count() {
 
 #[test]
 fn parse_gesture_binding_with_modifier() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let binding = parse_gesture_binding("mod+3-finger-swipe", ModKey::Super).unwrap();
     assert!(binding.modifiers.logo);
     assert_eq!(binding.trigger, GestureTrigger::Swipe { fingers: 3 });
@@ -351,9 +351,9 @@ fn parse_gesture_binding_with_modifier() {
 
 #[test]
 fn parse_gesture_binding_without_modifier() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let binding = parse_gesture_binding("4-finger-pinch-out", ModKey::Super).unwrap();
-    assert_eq!(binding.modifiers, driftwm::config::Modifiers::EMPTY);
+    assert_eq!(binding.modifiers, srwm::config::Modifiers::EMPTY);
     assert_eq!(binding.trigger, GestureTrigger::PinchOut { fingers: 4 });
 }
 
@@ -361,7 +361,7 @@ fn parse_gesture_binding_without_modifier() {
 
 #[test]
 fn gesture_swipe_continuous_action_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Swipe { fingers: 3 };
     let entry = parse_gesture_config_entry(&trigger, "pan-viewport").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Continuous(ContinuousAction::PanViewport)));
@@ -369,7 +369,7 @@ fn gesture_swipe_continuous_action_is_valid() {
 
 #[test]
 fn gesture_swipe_threshold_action_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Swipe { fingers: 4 };
     let entry = parse_gesture_config_entry(&trigger, "center-nearest").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Threshold(ThresholdAction::CenterNearest)));
@@ -377,7 +377,7 @@ fn gesture_swipe_threshold_action_is_valid() {
 
 #[test]
 fn gesture_pinch_continuous_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Pinch { fingers: 3 };
     let entry = parse_gesture_config_entry(&trigger, "zoom").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Continuous(ContinuousAction::Zoom)));
@@ -385,7 +385,7 @@ fn gesture_pinch_continuous_is_valid() {
 
 #[test]
 fn gesture_pinch_threshold_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Pinch { fingers: 3 };
     let result = parse_gesture_config_entry(&trigger, "zoom-to-fit");
     assert!(result.is_err(), "pinch + threshold action should be rejected");
@@ -397,7 +397,7 @@ fn gesture_pinch_threshold_is_error() {
 
 #[test]
 fn gesture_pinch_in_threshold_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::PinchIn { fingers: 4 };
     let entry = parse_gesture_config_entry(&trigger, "zoom-to-fit").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Threshold(ThresholdAction::Fixed(_))));
@@ -405,7 +405,7 @@ fn gesture_pinch_in_threshold_is_valid() {
 
 #[test]
 fn gesture_pinch_in_continuous_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::PinchIn { fingers: 4 };
     let result = parse_gesture_config_entry(&trigger, "zoom");
     assert!(result.is_err(), "pinch-in + continuous action should be rejected");
@@ -413,7 +413,7 @@ fn gesture_pinch_in_continuous_is_error() {
 
 #[test]
 fn gesture_swipe_up_continuous_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::SwipeUp { fingers: 4 };
     let result = parse_gesture_config_entry(&trigger, "pan-viewport");
     assert!(result.is_err(), "swipe-up + continuous action should be rejected");
@@ -421,7 +421,7 @@ fn gesture_swipe_up_continuous_is_error() {
 
 #[test]
 fn gesture_swipe_up_threshold_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::SwipeUp { fingers: 4 };
     let entry = parse_gesture_config_entry(&trigger, "exec notify-send hi").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Threshold(ThresholdAction::Fixed(_))));
@@ -429,7 +429,7 @@ fn gesture_swipe_up_threshold_is_valid() {
 
 #[test]
 fn gesture_hold_continuous_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Hold { fingers: 4 };
     let result = parse_gesture_config_entry(&trigger, "zoom");
     assert!(result.is_err(), "hold + continuous action should be rejected");
@@ -437,7 +437,7 @@ fn gesture_hold_continuous_is_error() {
 
 #[test]
 fn gesture_hold_threshold_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Hold { fingers: 4 };
     let entry = parse_gesture_config_entry(&trigger, "center-window").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Threshold(ThresholdAction::Fixed(_))));
@@ -453,7 +453,7 @@ fn gesture_binding_invalid_modifier_is_error() {
 
 #[test]
 fn gesture_zoom_on_swipe_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Swipe { fingers: 3 };
     let result = parse_gesture_config_entry(&trigger, "zoom");
     assert!(result.is_err(), "zoom on swipe trigger should be rejected");
@@ -465,7 +465,7 @@ fn gesture_zoom_on_swipe_is_error() {
 
 #[test]
 fn gesture_center_nearest_on_hold_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::Hold { fingers: 4 };
     let result = parse_gesture_config_entry(&trigger, "center-nearest");
     assert!(result.is_err(), "center-nearest on hold should be rejected");
@@ -473,7 +473,7 @@ fn gesture_center_nearest_on_hold_is_error() {
 
 #[test]
 fn gesture_center_nearest_on_pinch_in_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::PinchIn { fingers: 4 };
     let result = parse_gesture_config_entry(&trigger, "center-nearest");
     assert!(result.is_err(), "center-nearest on pinch-in should be rejected");
@@ -481,7 +481,7 @@ fn gesture_center_nearest_on_pinch_in_is_error() {
 
 #[test]
 fn gesture_doubletap_swipe_move_is_valid() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::DoubletapSwipe { fingers: 3 };
     let entry = parse_gesture_config_entry(&trigger, "move-window").unwrap();
     assert!(matches!(entry, GestureConfigEntry::Continuous(ContinuousAction::MoveWindow)));
@@ -489,7 +489,7 @@ fn gesture_doubletap_swipe_move_is_valid() {
 
 #[test]
 fn gesture_doubletap_swipe_pan_is_error() {
-    use driftwm::config::GestureTrigger;
+    use srwm::config::GestureTrigger;
     let trigger = GestureTrigger::DoubletapSwipe { fingers: 3 };
     let result = parse_gesture_config_entry(&trigger, "pan-viewport");
     assert!(result.is_err(), "doubletap-swipe + pan-viewport should be rejected");

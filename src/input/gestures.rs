@@ -22,10 +22,10 @@ use smithay::{
 };
 
 use crate::grabs::{MoveSurfaceGrab, ResizeState, has_bottom, has_left, has_right, has_top};
-use crate::state::{DriftWm, FocusTarget, output_state};
-use driftwm::canvas::{self, CanvasPos, canvas_to_screen};
-use driftwm::snap::{SnapState, snap_resize_edges};
-use driftwm::config::{
+use crate::state::{Srwm, FocusTarget, output_state};
+use srwm::canvas::{self, CanvasPos, canvas_to_screen};
+use srwm::snap::{SnapState, snap_resize_edges};
+use srwm::config::{
     Action, BindingContext, ContinuousAction, Direction, GestureConfigEntry, GestureTrigger,
     ThresholdAction,
 };
@@ -80,9 +80,9 @@ pub(crate) const DOUBLE_TAP_WINDOW_MS: u64 = 300;
 
 fn set_accel_profile(
     device: &mut smithay::reexports::input::Device,
-    profile: driftwm::config::AccelProfile,
+    profile: srwm::config::AccelProfile,
 ) {
-    use driftwm::config::AccelProfile;
+    use srwm::config::AccelProfile;
     let libinput_profile = match profile {
         AccelProfile::Flat => smithay::reexports::input::AccelProfile::Flat,
         AccelProfile::Adaptive => smithay::reexports::input::AccelProfile::Adaptive,
@@ -92,7 +92,7 @@ fn set_accel_profile(
     }
 }
 
-impl DriftWm {
+impl Srwm {
     // ── Swipe ──────────────────────────────────────────────────────────
 
     fn exit_fullscreen_for_gesture(&mut self) {
@@ -136,7 +136,7 @@ impl DriftWm {
                     GestureConfigEntry::Continuous(ContinuousAction::ResizeWindow) => {
                         if let Some((window, _)) = self.window_under(pos)
                             .filter(|(w, _)| {
-                                !w.wl_surface().as_ref().and_then(|s| driftwm::config::applied_rule(s))
+                                !w.wl_surface().as_ref().and_then(|s| srwm::config::applied_rule(s))
                                     .is_some_and(|r| r.widget)
                             })
                         {
@@ -177,7 +177,7 @@ impl DriftWm {
                     ContinuousAction::ResizeWindow => {
                         if let Some((window, _)) = self.window_under(pos)
                             .filter(|(w, _)| {
-                                !w.wl_surface().as_ref().and_then(|s| driftwm::config::applied_rule(s))
+                                !w.wl_surface().as_ref().and_then(|s| srwm::config::applied_rule(s))
                                     .is_some_and(|r| r.widget)
                             })
                         {
@@ -408,23 +408,23 @@ impl DriftWm {
                     // Can't call self.snap_targets() here — gesture_state is
                     // mutably borrowed by the match arm.
                     let self_bar = if self.decorations.contains_key(&self_surface.id()) {
-                        driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT
+                        srwm::config::DecorationConfig::TITLE_BAR_HEIGHT
                     } else {
                         0
                     };
-                    let mut others: Vec<driftwm::snap::SnapRect> = Vec::new();
+                    let mut others: Vec<srwm::snap::SnapRect> = Vec::new();
                     for w in self.space.elements() {
                         let Some(surface) = w.wl_surface() else { continue };
                         if *surface == self_surface { continue }
-                        if driftwm::config::applied_rule(&surface).is_some_and(|r| r.widget) { continue }
+                        if srwm::config::applied_rule(&surface).is_some_and(|r| r.widget) { continue }
                         let Some(loc) = self.space.element_location(w) else { continue };
                         let size = w.geometry().size;
                         let bar = if self.decorations.contains_key(&surface.id()) {
-                            driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT
+                            srwm::config::DecorationConfig::TITLE_BAR_HEIGHT
                         } else {
                             0
                         };
-                        others.push(driftwm::snap::SnapRect {
+                        others.push(srwm::snap::SnapRect {
                             x_low: loc.x as f64,
                             x_high: loc.x as f64 + size.w as f64,
                             y_low: loc.y as f64 - bar as f64,
@@ -857,7 +857,7 @@ impl DriftWm {
     /// If the window is pinned, falls through to Swipe3Pan instead.
     fn start_gesture_move(&mut self, window: Window, pos: Point<f64, Logical>) {
         if window.wl_surface().as_ref()
-            .and_then(|s| driftwm::config::applied_rule(s))
+            .and_then(|s| srwm::config::applied_rule(s))
             .is_some_and(|r| r.widget)
         {
             self.gesture_state = Some(GestureState::SwipePan);

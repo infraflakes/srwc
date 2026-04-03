@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Torture test for driftwm — hammers the compositor to surface resource leaks.
-# Run this INSIDE a driftwm session. Monitors fd count and memory throughout.
+# Torture test for srwm — hammers the compositor to surface resource leaks.
+# Run this INSIDE a srwm session. Monitors fd count and memory throughout.
 #
 # Usage:
 #   ./extras/scripts/torture-test.sh [--rounds N] [--terminal TERM]
@@ -30,9 +30,9 @@ done
 # --- Helpers ---
 compositor_pid() {
     if [[ -z "$PID" ]]; then
-        PID=$(pidof driftwm 2>/dev/null || true)
+        PID=$(pidof srwm 2>/dev/null || true)
         if [[ -z "$PID" ]]; then
-            echo "ERROR: driftwm not running" >&2
+            echo "ERROR: srwm not running" >&2
             exit 1
         fi
     fi
@@ -65,7 +65,7 @@ wait_settle() {
 }
 
 # --- Checks ---
-echo "driftwm torture test"
+echo "srwm torture test"
 echo "  compositor pid: $(compositor_pid)"
 echo "  terminal:       $TERMINAL"
 echo "  rounds:         $ROUNDS"

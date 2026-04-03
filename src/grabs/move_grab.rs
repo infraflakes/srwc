@@ -11,9 +11,9 @@ use smithay::{
     wayland::seat::WaylandFocus,
 };
 
-use driftwm::canvas::{CanvasPos, canvas_to_screen};
-use driftwm::snap::{SnapParams, SnapState, update_axis};
-use crate::state::{DriftWm, output_state, output_logical_size};
+use srwm::canvas::{CanvasPos, canvas_to_screen};
+use srwm::snap::{SnapParams, SnapState, update_axis};
+use crate::state::{Srwm, output_state, output_logical_size};
 
 /// Which output edge is inhibited after a cross-output teleport.
 #[derive(Clone, Copy)]
@@ -25,7 +25,7 @@ enum Edge {
 }
 
 pub struct MoveSurfaceGrab {
-    pub start_data: GrabStartData<DriftWm>,
+    pub start_data: GrabStartData<Srwm>,
     pub window: Window,
     pub initial_window_location: Point<i32, Logical>,
     pub snap: SnapState,
@@ -37,7 +37,7 @@ pub struct MoveSurfaceGrab {
 
 impl MoveSurfaceGrab {
     pub fn new(
-        start_data: GrabStartData<DriftWm>,
+        start_data: GrabStartData<Srwm>,
         window: Window,
         initial_window_location: Point<i32, Logical>,
         output: Output,
@@ -157,12 +157,12 @@ impl MoveSurfaceGrab {
     }
 }
 
-impl PointerGrab<DriftWm> for MoveSurfaceGrab {
+impl PointerGrab<Srwm> for MoveSurfaceGrab {
     fn motion(
         &mut self,
-        data: &mut DriftWm,
-        handle: &mut PointerInnerHandle<'_, DriftWm>,
-        _focus: Option<(<DriftWm as SeatHandler>::PointerFocus, Point<f64, Logical>)>,
+        data: &mut Srwm,
+        handle: &mut PointerInnerHandle<'_, Srwm>,
+        _focus: Option<(<Srwm as SeatHandler>::PointerFocus, Point<f64, Logical>)>,
         event: &MotionEvent,
     ) {
         data.render.blur_scene_generation += 1;
@@ -308,8 +308,8 @@ impl PointerGrab<DriftWm> for MoveSurfaceGrab {
 
     fn button(
         &mut self,
-        data: &mut DriftWm,
-        handle: &mut PointerInnerHandle<'_, DriftWm>,
+        data: &mut Srwm,
+        handle: &mut PointerInnerHandle<'_, Srwm>,
         event: &ButtonEvent,
     ) {
         handle.button(data, event);
@@ -319,7 +319,7 @@ impl PointerGrab<DriftWm> for MoveSurfaceGrab {
         }
     }
 
-    fn unset(&mut self, _data: &mut DriftWm) {
+    fn unset(&mut self, _data: &mut Srwm) {
         output_state(&self.output).edge_pan_velocity = None;
     }
 

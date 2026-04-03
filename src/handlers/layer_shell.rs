@@ -23,9 +23,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// set full anchors before smithay's validation hook runs on orphaned commits.
 pub(crate) struct LayerDestroyedMarker(pub AtomicBool);
 
-use crate::state::{CanvasLayer, DriftWm, FocusTarget};
+use crate::state::{CanvasLayer, Srwm, FocusTarget};
 
-impl WlrLayerShellHandler for DriftWm {
+impl WlrLayerShellHandler for Srwm {
     fn shell_state(&mut self) -> &mut WlrLayerShellState {
         &mut self.layer_shell_state
     }
@@ -172,4 +172,4 @@ impl WlrLayerShellHandler for DriftWm {
     }
 }
 
-delegate_layer_shell!(DriftWm);
+delegate_layer_shell!(Srwm);

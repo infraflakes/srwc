@@ -1,5 +1,5 @@
-use crate::state::{DriftWm, FocusTarget};
-use driftwm::window_ext::WindowExt;
+use crate::state::{Srwm, FocusTarget};
+use srwm::window_ext::WindowExt;
 use smithay::{
     delegate_xwayland_shell,
     desktop::Window,
@@ -37,7 +37,7 @@ fn x11_edge_to_xdg(edge: ResizeEdge) -> xdg_toplevel::ResizeEdge {
 }
 
 
-impl XwmHandler for DriftWm {
+impl XwmHandler for Srwm {
     fn xwm_state(&mut self, _xwm: XwmId) -> &mut X11Wm {
         self.x11_wm.as_mut().expect("X11Wm not started")
     }
@@ -81,8 +81,8 @@ impl XwmHandler for DriftWm {
             // navigate_to_window uses camera_to_center_window which offsets by bar/2;
             // the spawn position must be the exact inverse so cascade detects collisions.
             let will_have_ssd = smithay_window.wants_ssd()
-                || rule.as_ref().is_some_and(|r| r.decoration == driftwm::config::DecorationMode::Server);
-            let bar = if will_have_ssd { driftwm::config::DecorationConfig::TITLE_BAR_HEIGHT as f64 } else { 0.0 };
+                || rule.as_ref().is_some_and(|r| r.decoration == srwm::config::DecorationMode::Server);
+            let bar = if will_have_ssd { srwm::config::DecorationConfig::TITLE_BAR_HEIGHT as f64 } else { 0.0 };
             let vc = self.usable_center_screen();
             let centered = self.active_output()
                 .and_then(|o| self.space.output_geometry(&o))
@@ -261,7 +261,7 @@ impl XwmHandler for DriftWm {
             output,
             last_clamped_location: pointer.current_location(),
             last_x11_configure: None,
-            snap: driftwm::snap::SnapState::default(),
+            snap: srwm::snap::SnapState::default(),
         };
         pointer.set_grab(self, grab, serial, Focus::Clear);
     }
@@ -270,7 +270,7 @@ impl XwmHandler for DriftWm {
         let Some(smithay_window) = self.find_x11_window(&window) else { return };
         let Some(wl_surface) = smithay_window.wl_surface().map(|s| s.into_owned()) else { return };
 
-        if driftwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
+        if srwm::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
             return;
         }
 
@@ -340,7 +340,7 @@ impl XwmHandler for DriftWm {
     }
 }
 
-impl XWaylandShellHandler for DriftWm {
+impl XWaylandShellHandler for Srwm {
     fn xwayland_shell_state(&mut self) -> &mut XWaylandShellState {
         &mut self.xwayland_shell_state
     }
@@ -363,12 +363,12 @@ impl XWaylandShellHandler for DriftWm {
         let title = surface.title();
         let rule = self.config.match_window_rule(&class, &title).cloned();
         if let Some(ref rule) = rule {
-            let applied = driftwm::config::AppliedWindowRule::from(rule);
+            let applied = srwm::config::AppliedWindowRule::from(rule);
             with_states(&wl_surface, |states| {
                 states.data_map.insert_if_missing_threadsafe(|| {
                     std::sync::Mutex::new(applied.clone())
                 });
-                *states.data_map.get::<std::sync::Mutex<driftwm::config::AppliedWindowRule>>()
+                *states.data_map.get::<std::sync::Mutex<srwm::config::AppliedWindowRule>>()
                     .unwrap().lock().unwrap() = applied;
             });
         }
@@ -376,9 +376,9 @@ impl XWaylandShellHandler for DriftWm {
         // SSD decorations: check MOTIF hints + window rule overrides
         let wants_ssd = smithay_window.wants_ssd();
         let rule_forces_ssd = rule.as_ref()
-            .is_some_and(|r| r.decoration == driftwm::config::DecorationMode::Server);
+            .is_some_and(|r| r.decoration == srwm::config::DecorationMode::Server);
         let rule_forces_none = rule.as_ref()
-            .is_some_and(|r| r.decoration == driftwm::config::DecorationMode::None);
+            .is_some_and(|r| r.decoration == srwm::config::DecorationMode::None);
 
         if (wants_ssd || rule_forces_ssd) && !rule_forces_none {
             let geo = smithay_window.geometry();
@@ -410,15 +410,15 @@ impl XWaylandShellHandler for DriftWm {
     }
 }
 
-delegate_xwayland_shell!(DriftWm);
+delegate_xwayland_shell!(Srwm);
 
 use smithay::delegate_xwayland_keyboard_grab;
 use smithay::wayland::xwayland_keyboard_grab::XWaylandKeyboardGrabHandler;
 
-impl XWaylandKeyboardGrabHandler for DriftWm {
+impl XWaylandKeyboardGrabHandler for Srwm {
     fn keyboard_focus_for_xsurface(&self, surface: &WlSurface) -> Option<FocusTarget> {
         self.find_x11_surface_by_wl(surface)
             .map(|_| FocusTarget(surface.clone()))
     }
 }
-delegate_xwayland_keyboard_grab!(DriftWm);
+delegate_xwayland_keyboard_grab!(Srwm);

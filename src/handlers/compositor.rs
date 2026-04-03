@@ -2,8 +2,8 @@ use std::cell::RefCell;
 
 use crate::grabs::{ResizeState, has_left, has_top};
 use crate::handlers::layer_shell::LayerDestroyedMarker;
-use crate::state::{ClientState, DriftWm, FocusTarget};
-use driftwm::window_ext::WindowExt;
+use crate::state::{ClientState, Srwm, FocusTarget};
+use srwm::window_ext::WindowExt;
 use smithay::input::pointer::CursorImageStatus;
 use smithay::utils::Rectangle;
 use smithay::xwayland::XWaylandClientData;
@@ -31,7 +31,7 @@ use smithay::{
     },
 };
 
-impl CompositorHandler for DriftWm {
+impl CompositorHandler for Srwm {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.compositor_state
     }
@@ -51,7 +51,7 @@ impl CompositorHandler for DriftWm {
         // (before get_layer_surface registers smithay's validation hook), it fires
         // first on every commit. For destroyed layer surfaces, it sets full anchors
         // so smithay's size validation passes on the orphaned final commit.
-        add_pre_commit_hook::<DriftWm, _>(surface, |_state, _dh, surface| {
+        add_pre_commit_hook::<Srwm, _>(surface, |_state, _dh, surface| {
             with_states(surface, |states| {
                 if states.data_map.get::<LayerDestroyedMarker>().is_some_and(|m| m.0.load(std::sync::atomic::Ordering::Relaxed)) {
                     let mut guard = states.cached_state.get::<LayerSurfaceCachedState>();
@@ -110,7 +110,7 @@ impl CompositorHandler for DriftWm {
         {
             let ok = self
                 .loop_handle
-                .insert_source(source, move |_, _, data: &mut DriftWm| {
+                .insert_source(source, move |_, _, data: &mut Srwm| {
                     if let Some(client_state) = client.get_data::<ClientState>() {
                         let dh = data.display_handle.clone();
                         client_state
@@ -162,7 +162,7 @@ impl CompositorHandler for DriftWm {
 
         // Update renderer surface state (buffer dimensions, surface_view, textures).
         // Without this, bbox_from_surface_tree() can't see any surfaces and returns 0x0.
-        smithay::backend::renderer::utils::on_commit_buffer_handler::<DriftWm>(surface);
+        smithay::backend::renderer::utils::on_commit_buffer_handler::<Srwm>(surface);
 
         // Session lock: confirm lock on first buffer commit from the lock surface
         if let crate::state::SessionLock::Pending(_) = &self.session_lock {
@@ -223,17 +223,17 @@ impl CompositorHandler for DriftWm {
                     // previous commit (happens when the first commit had zero
                     // size and we re-inserted into pending_center for retry).
                     let already_applied = with_states(&root, |states| {
-                        states.data_map.get::<std::sync::Mutex<driftwm::config::AppliedWindowRule>>().is_some()
+                        states.data_map.get::<std::sync::Mutex<srwm::config::AppliedWindowRule>>().is_some()
                     });
 
                     if let Some(ref rule) = rule {
                         // Store applied rule in surface data_map
-                        let applied = driftwm::config::AppliedWindowRule::from(rule);
+                        let applied = srwm::config::AppliedWindowRule::from(rule);
                         with_states(&root, |states| {
                             states.data_map.insert_if_missing_threadsafe(|| {
                                 std::sync::Mutex::new(applied.clone())
                             });
-                            *states.data_map.get::<std::sync::Mutex<driftwm::config::AppliedWindowRule>>()
+                            *states.data_map.get::<std::sync::Mutex<srwm::config::AppliedWindowRule>>()
                                 .unwrap().lock().unwrap() = applied;
                         });
                     }
@@ -292,7 +292,7 @@ impl CompositorHandler for DriftWm {
                     }
 
                     // Decoration override: always re-apply (idempotent, needed on tray reopen)
-                    if let Some(ref rule) = rule && rule.decoration != driftwm::config::DecorationMode::Client {
+                    if let Some(ref rule) = rule && rule.decoration != srwm::config::DecorationMode::Client {
                         use smithay::reexports::wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode;
                         if let Some(toplevel) = window.toplevel() {
                             toplevel.with_pending_state(|state| {
@@ -334,7 +334,7 @@ impl CompositorHandler for DriftWm {
                         {
                             let is_server_side = self.pending_ssd.contains(&root.id());
                             let is_none_mode = rule.as_ref()
-                                .is_some_and(|r| r.decoration == driftwm::config::DecorationMode::None);
+                                .is_some_and(|r| r.decoration == srwm::config::DecorationMode::None);
                             if is_server_side && !is_none_mode && !self.decorations.contains_key(&root.id()) {
                                 let deco = crate::decorations::WindowDecoration::new(
                                     geo.size.w,
@@ -386,7 +386,7 @@ impl CompositorHandler for DriftWm {
 /// send the initial configure event so the client can start rendering.
 fn ensure_initial_configure(
     surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
-    state: &DriftWm,
+    state: &Srwm,
 ) {
     if let Some(window) = state
         .space
@@ -414,7 +414,7 @@ fn ensure_initial_configure(
     }
 }
 
-impl DriftWm {
+impl Srwm {
     /// Give keyboard focus to a layer surface if it doesn't already have it.
     fn focus_exclusive_layer(&mut self, surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface) {
         let keyboard = self.seat.get_keyboard().unwrap();
@@ -599,15 +599,15 @@ impl DriftWm {
     }
 }
 
-impl BufferHandler for DriftWm {
+impl BufferHandler for Srwm {
     fn buffer_destroyed(&mut self, _buffer: &WlBuffer) {}
 }
 
-impl ShmHandler for DriftWm {
+impl ShmHandler for Srwm {
     fn shm_state(&self) -> &ShmState {
         &self.shm_state
     }
 }
 
-delegate_compositor!(DriftWm);
-delegate_shm!(DriftWm);
+delegate_compositor!(Srwm);
+delegate_shm!(Srwm);

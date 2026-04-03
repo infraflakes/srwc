@@ -5,7 +5,7 @@
 BATTERY_LOW=15
 BATTERY_CRITICAL=5
 COOLDOWN=300
-STATE_DIR="/tmp/driftwm-battery-notify"
+STATE_DIR="/tmp/srwm-battery-notify"
 mkdir -p "$STATE_DIR"
 
 check_cooldown() {

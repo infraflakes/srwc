@@ -16,9 +16,9 @@ use smithay::{
 
 use smithay::input::pointer::CursorImageStatus;
 
-use crate::state::{DriftWm, output_state};
-use driftwm::canvas::{self, CanvasPos, canvas_to_screen};
-use driftwm::snap::{SnapState, snap_resize_edges};
+use crate::state::{Srwm, output_state};
+use srwm::canvas::{self, CanvasPos, canvas_to_screen};
+use srwm::snap::{SnapState, snap_resize_edges};
 
 /// Tracks the resize lifecycle for a window. Stored in the surface data map
 /// (wrapped in `RefCell`) so that `compositor::commit()` can reposition
@@ -40,7 +40,7 @@ pub enum ResizeState {
 }
 
 pub struct ResizeSurfaceGrab {
-    pub start_data: GrabStartData<DriftWm>,
+    pub start_data: GrabStartData<Srwm>,
     pub window: Window,
     pub edges: xdg_toplevel::ResizeEdge,
     pub initial_window_location: Point<i32, Logical>,
@@ -68,12 +68,12 @@ pub fn has_right(edges: xdg_toplevel::ResizeEdge) -> bool {
     edges as u32 & 8 != 0
 }
 
-impl PointerGrab<DriftWm> for ResizeSurfaceGrab {
+impl PointerGrab<Srwm> for ResizeSurfaceGrab {
     fn motion(
         &mut self,
-        data: &mut DriftWm,
-        handle: &mut PointerInnerHandle<'_, DriftWm>,
-        _focus: Option<(<DriftWm as SeatHandler>::PointerFocus, Point<f64, Logical>)>,
+        data: &mut Srwm,
+        handle: &mut PointerInnerHandle<'_, Srwm>,
+        _focus: Option<(<Srwm as SeatHandler>::PointerFocus, Point<f64, Logical>)>,
         event: &MotionEvent,
     ) {
         // Force pointer back if Phase 3 input routing crossed to another output.
@@ -185,8 +185,8 @@ impl PointerGrab<DriftWm> for ResizeSurfaceGrab {
 
     fn button(
         &mut self,
-        data: &mut DriftWm,
-        handle: &mut PointerInnerHandle<'_, DriftWm>,
+        data: &mut Srwm,
+        handle: &mut PointerInnerHandle<'_, Srwm>,
         event: &ButtonEvent,
     ) {
         handle.button(data, event);
@@ -226,7 +226,7 @@ impl PointerGrab<DriftWm> for ResizeSurfaceGrab {
         }
     }
 
-    fn unset(&mut self, data: &mut DriftWm) {
+    fn unset(&mut self, data: &mut Srwm) {
         data.cursor.grab_cursor = false;
         data.cursor.cursor_status = CursorImageStatus::default_named();
     }

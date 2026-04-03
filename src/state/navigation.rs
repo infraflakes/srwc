@@ -4,11 +4,11 @@ use smithay::{
     utils::Point,
     wayland::seat::WaylandFocus,
 };
-use driftwm::window_ext::WindowExt;
+use srwm::window_ext::WindowExt;
 
-use super::DriftWm;
+use super::Srwm;
 
-impl DriftWm {
+impl Srwm {
     /// Navigate the viewport to center on a window: raise, focus, animate camera.
     /// When `reset_zoom` is true, zoom animates to 1.0 (intentional navigation).
     /// Otherwise preserves current zoom, or restores saved zoom if leaving overview.
@@ -33,7 +33,7 @@ impl DriftWm {
         let window_size = window.geometry().size;
         let bar = self.window_ssd_bar(window);
         let vc = self.usable_center_screen();
-        let target = driftwm::canvas::camera_to_center_window(
+        let target = srwm::canvas::camera_to_center_window(
             window_loc, window_size, vc, target_zoom, bar,
         );
 
@@ -55,9 +55,9 @@ impl DriftWm {
     /// Allows zooming out far enough to see all windows.
     pub fn min_zoom(&self) -> f64 {
         let viewport = self.get_usable_area().size;
-        driftwm::canvas::dynamic_min_zoom(
+        srwm::canvas::dynamic_min_zoom(
             self.space.elements().filter(|w| {
-                !w.wl_surface().and_then(|s| driftwm::config::applied_rule(&s))
+                !w.wl_surface().and_then(|s| srwm::config::applied_rule(&s))
                     .is_some_and(|r| r.widget)
             }).map(|w| {
                 let loc = self.space.element_location(w).unwrap_or_default();
@@ -73,7 +73,7 @@ impl DriftWm {
     /// Should NOT be called during Alt-Tab cycling (history is frozen).
     /// Skips windows with `skip_taskbar` rule.
     pub fn update_focus_history(&mut self, surface: &WlSurface) {
-        if driftwm::config::applied_rule(surface).is_some_and(|r| r.widget) {
+        if srwm::config::applied_rule(surface).is_some_and(|r| r.widget) {
             return;
         }
         let window = self

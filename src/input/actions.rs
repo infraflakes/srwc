@@ -4,12 +4,12 @@ use smithay::{
     wayland::seat::WaylandFocus,
 };
 
-use driftwm::canvas::{self};
-use driftwm::config::Action;
-use driftwm::window_ext::WindowExt;
-use crate::state::{DriftWm, FocusTarget, HomeReturn};
+use srwm::canvas::{self};
+use srwm::config::Action;
+use srwm::window_ext::WindowExt;
+use crate::state::{Srwm, FocusTarget, HomeReturn};
 
-impl DriftWm {
+impl Srwm {
     pub fn execute_action(&mut self, action: &Action) {
         // Snapshot fullscreen window before the guard exits it.
         // Also check gesture_exited_fullscreen (set by exit_fullscreen_for_gesture
@@ -55,7 +55,7 @@ impl DriftWm {
             Action::NudgeWindow(dir) => {
                 let keyboard = self.seat.get_keyboard().unwrap();
                 if let Some(focus) = keyboard.current_focus() {
-                    if driftwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
+                    if srwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
                         return;
                     }
                     let window = self
@@ -112,7 +112,7 @@ impl DriftWm {
             Action::CenterWindow => {
                 let keyboard = self.seat.get_keyboard().unwrap();
                 let focused_non_widget = keyboard.current_focus().and_then(|focus| {
-                    if driftwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
+                    if srwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
                         return None;
                     }
                     self.space
@@ -133,7 +133,7 @@ impl DriftWm {
                         .space
                         .elements()
                         .filter(|w| {
-                            !w.wl_surface().as_ref().and_then(|s| driftwm::config::applied_rule(s))
+                            !w.wl_surface().as_ref().and_then(|s| srwm::config::applied_rule(s))
                                 .is_some_and(|r| r.widget)
                         })
                         .min_by(|a, b| {
@@ -204,7 +204,7 @@ impl DriftWm {
                 };
 
                 let windows = self.space.elements().filter(|w| {
-                    !w.wl_surface().as_ref().and_then(|s| driftwm::config::applied_rule(s))
+                    !w.wl_surface().as_ref().and_then(|s| srwm::config::applied_rule(s))
                         .is_some_and(|r| r.widget)
                 }).map(|w| {
                     let loc = self.space.element_location(w).unwrap_or_default();
@@ -361,7 +361,7 @@ impl DriftWm {
                     let usable = self.get_usable_area();
                     let vc = self.usable_center_screen();
                     let windows = self.space.elements().filter(|w| {
-                        !w.wl_surface().as_ref().and_then(|s| driftwm::config::applied_rule(s))
+                        !w.wl_surface().as_ref().and_then(|s| srwm::config::applied_rule(s))
                             .is_some_and(|r| r.widget)
                     }).map(|w| {
                         let loc = self.space.element_location(w).unwrap_or_default();
@@ -424,7 +424,7 @@ impl DriftWm {
             Action::SendToOutput(dir) => {
                 let keyboard = self.seat.get_keyboard().unwrap();
                 if let Some(focus) = keyboard.current_focus() {
-                    if driftwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
+                    if srwm::config::applied_rule(&focus.0).is_some_and(|r| r.widget) {
                         return;
                     }
                     let window = self

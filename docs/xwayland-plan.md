@@ -1,10 +1,10 @@
-# XWayland Support for driftwm
+# XWayland Support for srwm
 
 ## Context
 
-driftwm is a pure-Wayland compositor. Many Linux apps (Steam, Wine/Proton games, older GTK2/Qt4 apps, JetBrains IDEs) require X11. Adding XWayland support lets these apps run on the infinite canvas alongside native Wayland windows.
+srwm is a pure-Wayland compositor. Many Linux apps (Steam, Wine/Proton games, older GTK2/Qt4 apps, JetBrains IDEs) require X11. Adding XWayland support lets these apps run on the infinite canvas alongside native Wayland windows.
 
-smithay 0.7.0's `Window` type already wraps both Wayland and X11 via `WindowSurface` enum — but driftwm currently calls `.toplevel().unwrap()` **78 times across 15 files**, which will panic for X11 windows. The biggest part of this work is making the codebase window-type-agnostic.
+smithay 0.7.0's `Window` type already wraps both Wayland and X11 via `WindowSurface` enum — but srwm currently calls `.toplevel().unwrap()` **78 times across 15 files**, which will panic for X11 windows. The biggest part of this work is making the codebase window-type-agnostic.
 
 ## Approach: Direct XWayland via smithay (not xwayland-satellite)
 
@@ -47,7 +47,7 @@ pub x11_override_redirect: Vec<X11Surface>,  // menus/tooltips, rendered separat
 pub x11_display: Option<u32>,
 ```
 
-Initialize `XWaylandShellState::new::<Self>(&dh)` in `DriftWm::new()`.
+Initialize `XWaylandShellState::new::<Self>(&dh)` in `Srwm::new()`.
 
 ### 2c. Process lifecycle — `src/backend/winit.rs` and `src/backend/udev.rs`
 
@@ -76,7 +76,7 @@ pub fn find_x11_window(&self, x11: &X11Surface) -> Option<Window> {
 
 ## Phase 3: XwmHandler + XWaylandShellHandler — `src/handlers/xwayland.rs` (new file)
 
-Add `pub mod xwayland;` to `src/handlers/mod.rs`. Add `delegate_xwayland_shell!(DriftWm);`.
+Add `pub mod xwayland;` to `src/handlers/mod.rs`. Add `delegate_xwayland_shell!(Srwm);`.
 
 ### Managed window lifecycle
 
@@ -121,7 +121,7 @@ OR windows are **not** in the `Space`. Rendered manually in `compose_frame()` ab
 | `unfullscreen_request` | Find output, call `exit_fullscreen_on()` |
 | `move_request` | Initiate `MoveSurfaceGrab` |
 | `resize_request` | Initiate `ResizeSurfaceGrab` |
-| `maximize/minimize` | Ignore (no maximize/minimize in driftwm) |
+| `maximize/minimize` | Ignore (no maximize/minimize in srwm) |
 
 ### Clipboard/selection bridging
 

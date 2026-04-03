@@ -4,7 +4,7 @@ use smithay::backend::renderer::gles::element::PixelShaderElement;
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
 use smithay::utils::{Logical, Point, Rectangle, Size, Transform};
 
-use driftwm::config::DecorationConfig;
+use srwm::config::DecorationConfig;
 
 /// Per-window SSD decoration state.
 pub struct WindowDecoration {
