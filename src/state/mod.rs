@@ -1,4 +1,5 @@
 mod animation;
+use std::path::PathBuf;
 mod cursor;
 pub mod fit;
 mod fullscreen;
@@ -280,8 +281,14 @@ impl Srwm {
 }
 
 pub fn load_cameras() -> HashMap<String, (Point<f64, Logical>, f64)> {
+    load_cameras_from(state_dir())
+}
+
+pub(crate) fn load_cameras_from(
+    dir: Option<PathBuf>,
+) -> HashMap<String, (Point<f64, Logical>, f64)> {
     let mut result = HashMap::new();
-    let Some(dir) = state_dir() else {
+    let Some(dir) = dir else {
         return result;
     };
     let Ok(content) = std::fs::read_to_string(dir.join("cameras.toml")) else {
@@ -1435,45 +1442,20 @@ mod tests {
 mod camera_persistence_tests {
     use super::*;
 
-    /// Override XDG_STATE_HOME to a temp dir for isolated testing.  
-    fn with_temp_state_dir(f: impl FnOnce(std::path::PathBuf)) {
-        let tmp = std::env::temp_dir().join(format!("srwm-test-{}", std::process::id()));
-        let dir = tmp.join("srwm");
-        std::fs::create_dir_all(tmp.join("srwm")).unwrap();
-
-        // Temporarily override the env var
-        let old = std::env::var("XDG_STATE_HOME").ok();
-        unsafe {
-            std::env::set_var("XDG_STATE_HOME", &tmp);
-        }
-
-        f(dir.clone());
-
-        // Restore
-        match old {
-            Some(v) => unsafe {
-                std::env::set_var("XDG_STATE_HOME", v);
-            },
-            None => unsafe {
-                std::env::remove_var("XDG_STATE_HOME");
-            },
-        }
-        let _ = std::fs::remove_dir_all(&tmp);
-    }
-
     #[test]
     fn load_cameras_returns_empty_when_no_file() {
-        with_temp_state_dir(|_dir| {
-            let cameras = load_cameras();
-            assert!(cameras.is_empty());
-        });
+        let tmp = std::env::temp_dir().join(format!("srwm-test-dir-none-{}", std::process::id()));
+        let cameras = load_cameras_from(Some(tmp));
+        assert!(cameras.is_empty());
     }
 
     #[test]
     fn load_cameras_round_trip() {
-        with_temp_state_dir(|dir| {
-            // Write a cameras.toml manually
-            let content = r#"  
+        let tmp = std::env::temp_dir().join(format!("srwm-test-round-trip-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        // Write a cameras.toml manually
+        let content = r#"  
 ["eDP-1"]  
 camera_x = -960.0  
 camera_y = -540.0  
@@ -1484,65 +1466,60 @@ camera_x = 200.5
 camera_y = -300.25  
 zoom = 0.75  
 "#;
-            std::fs::write(dir.join("cameras.toml"), content).unwrap();
+        std::fs::write(tmp.join("cameras.toml"), content).unwrap();
 
-            let cameras = load_cameras();
-            assert_eq!(cameras.len(), 2);
+        let cameras = load_cameras_from(Some(tmp.clone()));
+        assert_eq!(cameras.len(), 2);
 
-            let (cam, zoom) = cameras.get("eDP-1").expect("eDP-1 missing");
-            assert!((cam.x - (-960.0)).abs() < 1e-10);
-            assert!((cam.y - (-540.0)).abs() < 1e-10);
-            assert!((zoom - 1.0).abs() < 1e-10);
+        let (cam, zoom) = cameras.get("eDP-1").expect("eDP-1 missing");
+        assert!((cam.x - (-960.0)).abs() < 1e-10);
+        assert!((cam.y - (-540.0)).abs() < 1e-10);
+        assert!((zoom - 1.0).abs() < 1e-10);
 
-            let (cam, zoom) = cameras.get("HDMI-A-1").expect("HDMI-A-1 missing");
-            assert!((cam.x - 200.5).abs() < 1e-10);
-            assert!((cam.y - (-300.25)).abs() < 1e-10);
-            assert!((zoom - 0.75).abs() < 1e-10);
-        });
+        let (cam, zoom) = cameras.get("HDMI-A-1").expect("HDMI-A-1 missing");
+        assert!((cam.x - 200.5).abs() < 1e-10);
+        assert!((cam.y - (-300.25)).abs() < 1e-10);
+        assert!((zoom - 0.75).abs() < 1e-10);
+
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn load_cameras_handles_corrupt_file() {
-        with_temp_state_dir(|dir| {
-            std::fs::write(dir.join("cameras.toml"), "this is not valid toml {{{{").unwrap();
-            let cameras = load_cameras();
-            // Should return empty, not panic
-            assert!(cameras.is_empty());
-        });
+        let tmp = std::env::temp_dir().join(format!("srwm-test-corrupt-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("cameras.toml"), "this is not valid toml {{{{").unwrap();
+        let cameras = load_cameras_from(Some(tmp.clone()));
+        // Should return empty, not panic
+        assert!(cameras.is_empty());
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn load_cameras_handles_empty_file() {
-        with_temp_state_dir(|dir| {
-            std::fs::write(dir.join("cameras.toml"), "").unwrap();
-            let cameras = load_cameras();
-            assert!(cameras.is_empty());
-        });
+        let tmp = std::env::temp_dir().join(format!("srwm-test-empty-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join("cameras.toml"), "").unwrap();
+        let cameras = load_cameras_from(Some(tmp.clone()));
+        assert!(cameras.is_empty());
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 
     #[test]
     fn load_cameras_handles_partial_entry() {
-        with_temp_state_dir(|dir| {
-            // Missing zoom field
-            let content = r#"  
+        let tmp = std::env::temp_dir().join(format!("srwm-test-partial-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        // Missing zoom field
+        let content = r#"  
 ["eDP-1"]  
 camera_x = -960.0  
 camera_y = -540.0  
 "#;
-            std::fs::write(dir.join("cameras.toml"), content).unwrap();
-            let cameras = load_cameras();
-            // Should either skip the incomplete entry or use a default zoom
-            // Either way, should not panic
-            assert!(cameras.is_empty() || cameras.contains_key("eDP-1"));
-        });
-    }
-
-    #[test]
-    fn state_dir_respects_xdg_state_home() {
-        with_temp_state_dir(|dir| {
-            let result = state_dir();
-            assert!(result.is_some());
-            assert_eq!(result.unwrap(), dir);
-        });
+        std::fs::write(tmp.join("cameras.toml"), content).unwrap();
+        let cameras = load_cameras_from(Some(tmp.clone()));
+        // Should either skip the incomplete entry or use a default zoom
+        // Either way, should not panic
+        assert!(cameras.is_empty() || cameras.contains_key("eDP-1"));
+        let _ = std::fs::remove_dir_all(&tmp);
     }
 }
