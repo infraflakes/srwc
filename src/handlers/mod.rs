@@ -341,6 +341,8 @@ impl InputMethodHandler for Srwm {
 
 delegate_text_input_manager!(Srwm);
 delegate_input_method_manager!(Srwm);
+use smithay::delegate_virtual_keyboard_manager;
+delegate_virtual_keyboard_manager!(Srwm);
 
 impl IdleInhibitHandler for Srwm {
     fn inhibit(&mut self, _surface: WlSurface) {}

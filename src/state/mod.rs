@@ -567,6 +567,10 @@ impl Srwm {
         }
         TextInputManagerState::new::<Self>(&dh);
         InputMethodManagerState::new::<Self, _>(&dh, |_client| true);
+        smithay::wayland::virtual_keyboard::VirtualKeyboardManagerState::new::<Self, _>(
+            &dh,
+            |_client| true,
+        );
 
         let config = Config::load();
 
