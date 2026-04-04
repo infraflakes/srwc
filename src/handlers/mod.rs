@@ -4,7 +4,9 @@ pub mod xdg_shell;
 pub mod xwayland;
 
 use crate::state::{FocusTarget, Srwm};
+use smithay::input::dnd::DndGrabHandler;
 use smithay::wayland::seat::WaylandFocus;
+use smithay::wayland::shell::xdg::dialog::XdgDialogHandler;
 use smithay::{
     backend::renderer::ImportDma,
     delegate_cursor_shape, delegate_data_control, delegate_data_device, delegate_dmabuf,
@@ -32,8 +34,7 @@ use smithay::{
         selection::{
             SelectionHandler,
             data_device::{
-                ClientDndGrabHandler, DataDeviceHandler, DataDeviceState, ServerDndGrabHandler,
-                set_data_device_focus,
+                DataDeviceHandler, DataDeviceState, WaylandDndGrabHandler, set_data_device_focus,
             },
             primary_selection::{
                 PrimarySelectionHandler, PrimarySelectionState, set_primary_focus,
@@ -111,13 +112,13 @@ impl SelectionHandler for Srwm {
 }
 
 impl DataDeviceHandler for Srwm {
-    fn data_device_state(&self) -> &DataDeviceState {
-        &self.data_device_state
+    fn data_device_state(&mut self) -> &mut DataDeviceState {
+        &mut self.data_device_state
     }
 }
 
-impl ClientDndGrabHandler for Srwm {}
-impl ServerDndGrabHandler for Srwm {}
+impl DndGrabHandler for Srwm {}
+impl WaylandDndGrabHandler for Srwm {}
 
 delegate_data_device!(Srwm);
 
@@ -234,16 +235,16 @@ impl XdgActivationHandler for Srwm {
 delegate_xdg_activation!(Srwm);
 
 impl PrimarySelectionHandler for Srwm {
-    fn primary_selection_state(&self) -> &PrimarySelectionState {
-        &self.primary_selection_state
+    fn primary_selection_state(&mut self) -> &mut PrimarySelectionState {
+        &mut self.primary_selection_state
     }
 }
 
 delegate_primary_selection!(Srwm);
 
 impl DataControlHandler for Srwm {
-    fn data_control_state(&self) -> &DataControlState {
-        &self.data_control_state
+    fn data_control_state(&mut self) -> &mut DataControlState {
+        &mut self.data_control_state
     }
 }
 
@@ -337,12 +338,12 @@ use smithay::delegate_content_type;
 delegate_content_type!(Srwm);
 
 use smithay::delegate_xdg_dialog;
-use smithay::wayland::shell::xdg::dialog::XdgDialogHandler;
+
+use smithay::wayland::shell::xdg::dialog::ToplevelDialogHint;
 
 impl XdgDialogHandler for Srwm {
-    fn modal_changed(&mut self, toplevel: ToplevelSurface, is_modal: bool) {
-        if is_modal {
-            // Redirect focus from parent to this modal dialog
+    fn dialog_hint_changed(&mut self, toplevel: ToplevelSurface, hint: ToplevelDialogHint) {
+        if hint == ToplevelDialogHint::Modal {
             let wl_surface = toplevel.wl_surface().clone();
             let window = self.window_for_surface(&wl_surface);
             if let Some(window) = window {

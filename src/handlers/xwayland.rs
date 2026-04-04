@@ -315,8 +315,7 @@ impl XwmHandler for Srwm {
         fd: std::os::fd::OwnedFd,
     ) {
         if let Some(wm) = self.xwayland.wm.as_mut() {
-            wm.send_selection(sel, mime, fd, self.loop_handle.clone())
-                .ok();
+            wm.send_selection(sel, mime, fd).ok();
         }
     }
 

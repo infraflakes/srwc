@@ -153,6 +153,7 @@ impl RenderElement<GlesRenderer> for TileShaderElement {
         dst: Rectangle<i32, Physical>,
         damage: &[Rectangle<i32, Physical>],
         opaque_regions: &[Rectangle<i32, Physical>],
+        _cache: Option<&smithay::utils::user_data::UserDataMap>,
     ) -> Result<(), GlesError> {
         frame.render_texture_from_to(
             &self.texture,

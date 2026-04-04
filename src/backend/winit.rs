@@ -34,6 +34,7 @@ pub fn init_winit(
             subpixel: Subpixel::Unknown,
             make: "srwm".to_string(),
             model: "winit".to_string(),
+            serial_number: String::new(),
         },
     );
     let mode = Mode {

@@ -187,7 +187,7 @@ fn refresh_toplevel<D>(
         states
             .data_map
             .get::<XdgToplevelSurfaceData>()
-            .map(|d| d.lock().unwrap().current.states.clone())
+            .map(|d| d.lock().unwrap().current_server_state().states.clone())
             .unwrap_or_default()
     });
 

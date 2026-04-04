@@ -266,9 +266,12 @@ impl RenderElement<GlesRenderer> for RoundedCornerElement {
         dst: Rectangle<i32, Physical>,
         damage: &[Rectangle<i32, Physical>],
         opaque_regions: &[Rectangle<i32, Physical>],
+        _cache: Option<&smithay::utils::user_data::UserDataMap>,
     ) -> Result<(), GlesError> {
         frame.override_default_tex_program(self.shader.clone(), self.uniforms.clone());
-        let result = self.inner.draw(frame, src, dst, damage, opaque_regions);
+        let result = self
+            .inner
+            .draw(frame, src, dst, damage, opaque_regions, _cache);
         frame.clear_tex_program_override();
         result
     }
@@ -846,7 +849,7 @@ pub fn compose_frame(
                 .as_ref()
                 .is_some_and(|r| r.decoration != srwm::config::DecorationMode::Client);
 
-            if !rule_forced {
+            if !rule_forced && !is_fullscreen {
                 if radius > 0.0 {
                     let toplevel_id =
                         smithay::backend::renderer::element::Id::from_wayland_resource(

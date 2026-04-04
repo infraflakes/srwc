@@ -50,6 +50,7 @@ pub fn spawn_xwayland(
     };
 
     let handle = loop_handle.clone();
+    let display_handle = dh.clone();
     if let Err(err) = loop_handle.insert_source(xwayland, move |event, _, data| match event {
         XWaylandEvent::Ready {
             x11_socket,
@@ -75,7 +76,7 @@ pub fn spawn_xwayland(
             data.xwayland.display = Some(display_number);
             data.xwayland.client = Some(client.clone());
 
-            match X11Wm::start_wm(handle.clone(), x11_socket, client.clone()) {
+            match X11Wm::start_wm(handle.clone(), &display_handle, x11_socket, client.clone()) {
                 Ok(wm) => {
                     tracing::info!("X11 window manager started");
                     data.xwayland.wm = Some(wm);

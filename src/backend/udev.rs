@@ -1,3 +1,4 @@
+use smithay::backend::drm::exporter::gbm::NodeFilter;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -815,6 +816,7 @@ fn create_surface(
             subpixel: convert_subpixel(connector.subpixel()),
             make: make.clone(),
             model: model.clone(),
+            serial_number: String::new(),
         },
     );
 
@@ -870,7 +872,7 @@ fn create_surface(
         drm_surface,
         None,
         allocator.clone(),
-        GbmFramebufferExporter::new(gbm.clone(), None),
+        GbmFramebufferExporter::new(gbm.clone(), NodeFilter::None),
         SUPPORTED_COLOR_FORMATS.iter().copied(),
         render_formats.iter().copied(),
         drm.cursor_size(),
@@ -902,7 +904,7 @@ fn create_surface(
                 fallback_surface,
                 None,
                 allocator,
-                GbmFramebufferExporter::new(gbm.clone(), None),
+                GbmFramebufferExporter::new(gbm.clone(), NodeFilter::None),
                 SUPPORTED_COLOR_FORMATS.iter().copied(),
                 fallback_formats,
                 drm.cursor_size(),

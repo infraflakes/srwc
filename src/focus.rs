@@ -31,6 +31,13 @@ use smithay::{
 };
 
 use crate::state::Srwm;
+use smithay::reexports::wayland_server::DisplayHandle;
+use smithay::{
+    input::dnd::{DndFocus, Source},
+    utils::{Logical, Point},
+    wayland::selection::data_device::WlOfferData,
+};
+use std::sync::Arc;
 
 // --- FocusTarget ---
 // Newtype over WlSurface for use as SeatHandler focus types.
@@ -240,5 +247,53 @@ impl TouchTarget<Srwm> for FocusTarget {
         seq: Serial,
     ) {
         <WlSurface as TouchTarget<Srwm>>::orientation(&self.0, seat, data, event, seq);
+    }
+}
+
+impl DndFocus<Srwm> for FocusTarget {
+    type OfferData<S>
+        = WlOfferData<S>
+    where
+        S: Source;
+
+    fn enter<S: Source>(
+        &self,
+        data: &mut Srwm,
+        dh: &DisplayHandle,
+        source: Arc<S>,
+        seat: &Seat<Srwm>,
+        location: Point<f64, Logical>,
+        serial: &Serial,
+    ) -> Option<WlOfferData<S>> {
+        <WlSurface as DndFocus<Srwm>>::enter(&self.0, data, dh, source, seat, location, serial)
+    }
+
+    fn motion<S: Source>(
+        &self,
+        data: &mut Srwm,
+        offer: Option<&mut WlOfferData<S>>,
+        seat: &Seat<Srwm>,
+        location: Point<f64, Logical>,
+        time: u32,
+    ) {
+        <WlSurface as DndFocus<Srwm>>::motion(&self.0, data, offer, seat, location, time)
+    }
+
+    fn leave<S: Source>(
+        &self,
+        data: &mut Srwm,
+        offer: Option<&mut WlOfferData<S>>,
+        seat: &Seat<Srwm>,
+    ) {
+        <WlSurface as DndFocus<Srwm>>::leave(&self.0, data, offer, seat)
+    }
+
+    fn drop<S: Source>(
+        &self,
+        data: &mut Srwm,
+        offer: Option<&mut WlOfferData<S>>,
+        seat: &Seat<Srwm>,
+    ) {
+        <WlSurface as DndFocus<Srwm>>::drop(&self.0, data, offer, seat)
     }
 }
