@@ -10,7 +10,6 @@ func (m *SrwmWayland) Test(ctx context.Context, source *dagger.Directory) *dagge
 	return dag.Container().
 		From("rust:latest").
 		WithEnvVariable("DEBIAN_FRONTEND", "noninteractive").
-		// Minimal dependencies needed just to compile the test binary
 		WithExec([]string{"apt-get", "update"}).
 		WithExec([]string{"apt-get", "install", "-y",
 			"pkg-config", "git", "libseat-dev", "libdisplay-info-dev",
@@ -18,9 +17,10 @@ func (m *SrwmWayland) Test(ctx context.Context, source *dagger.Directory) *dagge
 			"libwayland-dev", "libdrm-dev", "libpixman-1-dev", "libx11-dev",
 			"libxcursor-dev", "libxrandr-dev", "libxi-dev", "libxcb1-dev", "libgl-dev",
 		}).
-		WithExec([]string{"rustup", "component", "add", "clippy"}).
+		WithExec([]string{"rustup", "component", "add", "clippy", "rustfmt"}).
 		WithDirectory("/src", source.WithoutDirectory("target")).
 		WithWorkdir("/src").
 		WithExec([]string{"cargo", "test"}).
-		WithExec([]string{"cargo", "clippy"})
+		WithExec([]string{"cargo", "clippy"}).
+		WithExec([]string{"cargo", "fmt", "--check"})
 }
