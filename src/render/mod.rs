@@ -419,7 +419,7 @@ fn build_layer_elements(
             let elem_count = elements.len() - elem_start;
             let screen_rect = geo.to_physical_precise_round(output_scale);
             blur_requests.push(BlurRequestData {
-                surface_id: Resource::id(&*surface.wl_surface()),
+                surface_id: Resource::id(surface.wl_surface()),
                 screen_rect,
                 elem_start,
                 elem_count,

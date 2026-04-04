@@ -92,7 +92,7 @@ impl Srwm {
                         let (ux, uy) = dir.to_unit_vec();
                         let delta: Point<f64, smithay::utils::Logical> =
                             Point::from((ux * step, uy * step));
-                        os.camera = os.camera + delta;
+                        os.camera += delta;
                         (zoom, delta)
                     })
                     .unwrap_or_default();

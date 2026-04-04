@@ -96,7 +96,7 @@ impl Srwm {
             return;
         };
 
-        self.with_output_state(|os| os.camera = os.camera + delta);
+        self.with_output_state(|os| os.camera += delta);
         self.update_output_from_camera();
 
         // Shift pointer canvas position so screen position stays fixed
@@ -110,12 +110,10 @@ impl Srwm {
     pub fn apply_edge_pan(&mut self) {
         let canvas_delta = self
             .with_output_state(|os| {
-                let Some(velocity) = os.edge_pan_velocity else {
-                    return None;
-                };
+                let velocity = os.edge_pan_velocity?;
                 let zoom = os.zoom;
                 let delta = Point::from((velocity.x / zoom, velocity.y / zoom));
-                os.camera = os.camera + delta;
+                os.camera += delta;
                 Some(delta)
             })
             .flatten();
@@ -302,8 +300,8 @@ impl Srwm {
             .flatten()
             .unwrap_or((1.0, Point::default(), 1.0, Point::default(), false));
 
-        if warp {
-            if (new_zoom - old_zoom).abs() > 0.0 || (new_camera.x - old_camera.x).abs() > 0.0 {
+        if warp
+            && ((new_zoom - old_zoom).abs() > 0.0 || (new_camera.x - old_camera.x).abs() > 0.0) {
                 self.update_output_from_camera();
                 let pos = self.pointer().current_location();
                 let screen_x: f64 = (pos.x - old_camera.x) * old_zoom;
@@ -314,7 +312,6 @@ impl Srwm {
                 ));
                 self.warp_pointer(new_pos);
             }
-        }
 
         // Final snapped check for blur
         if self

@@ -3,7 +3,7 @@ BINDIR = $(PREFIX)/bin
 DATADIR = $(PREFIX)/share
 SYSCONFDIR ?= /etc
 
-.PHONY: build build-verbose fmt install uninstall
+.PHONY: build build-verbose fmt install uninstall test
 
 build:
 	dagger call build --source=. export --path=./target/release/srwm
@@ -13,6 +13,10 @@ build-verbose:
 
 fmt:
 	cargo fmt
+
+test:
+	cargo test
+	cargo clippy
 
 install:
 	install -Dm755 target/release/srwm $(DESTDIR)$(BINDIR)/srwm
