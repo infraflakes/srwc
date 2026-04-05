@@ -440,6 +440,7 @@ pub fn build_cursor_elements(
     renderer: &mut GlesRenderer,
     camera: Point<f64, smithay::utils::Logical>,
     zoom: f64,
+    scale: f64,
     alpha: f32,
 ) -> Vec<OutputRenderElements> {
     if alpha <= 0.0 {
@@ -447,9 +448,8 @@ pub fn build_cursor_elements(
     }
     let pointer = state.pointer();
     let canvas_pos = pointer.current_location();
-    // Custom elements are in screen-local physical coords
     let screen_pos = canvas_to_screen(CanvasPos(canvas_pos), camera, zoom).0;
-    let physical_pos: Point<f64, Physical> = (screen_pos.x, screen_pos.y).into();
+    let physical_pos: Point<f64, Physical> = screen_pos.to_physical_precise_round(scale);
 
     // Separate the status check from mutable state access (Rust 2024 borrow rules)
     let status = state.cursor.cursor_status.clone();
@@ -594,14 +594,7 @@ pub fn compose_frame(
     if !state.render.cached_bg_elements.contains_key(&output.name())
         && !state.render.cached_tile_bg.contains_key(&output.name())
     {
-        let output_size = output
-            .current_mode()
-            .map(|m| {
-                output
-                    .current_transform()
-                    .transform_size(m.size.to_logical(output.current_scale().integer_scale()))
-            })
-            .unwrap_or((1, 1).into());
+        let output_size = crate::state::output_logical_size(output);
         init_background(state, renderer, output_size, &output.name());
     }
 

@@ -215,8 +215,14 @@ pub fn init_winit(
             };
 
             // --- Build cursor + compose frame ---
-            let cursor_elements =
-                build_cursor_elements(data, backend.renderer(), cur_camera, cur_zoom, 1.0);
+            let cursor_elements = build_cursor_elements(
+                data,
+                backend.renderer(),
+                cur_camera,
+                cur_zoom,
+                output.current_scale().fractional_scale(),
+                1.0,
+            );
             let mut age = backend.buffer_age().unwrap_or(0);
             if !data.render.cached_tile_bg.is_empty() && (camera_moved || zoom_changed) {
                 age = 0;
@@ -316,12 +322,8 @@ pub fn init_winit(
                             #[allow(clippy::mutable_key_type)]
                             let mut screenshots = std::collections::HashMap::new();
                             screenshots.insert(output.clone(), (tw, two));
-                            data.screenshot_ui.open(
-                                renderer,
-                                screenshots,
-                                default_output,
-                                false,
-                            );
+                            data.screenshot_ui
+                                .open(renderer, screenshots, default_output, false);
                             if is_screen {
                                 data.screenshot_ui.select_all();
                                 data.pending_screenshot_confirm = Some(true);

@@ -211,15 +211,8 @@ pub fn process_blur_requests(
     use smithay::backend::renderer::element::Id;
     use smithay::backend::renderer::{Bind, Frame, Offscreen, Renderer};
 
-    let output_size = output
-        .current_mode()
-        .map(|m| {
-            let logical = output
-                .current_transform()
-                .transform_size(m.size.to_logical(output.current_scale().integer_scale()));
-            logical.to_physical_precise_round(output_scale)
-        })
-        .unwrap_or(Size::from((1, 1)));
+    let logical_size = crate::state::output_logical_size(output);
+    let output_size: Size<i32, Physical> = logical_size.to_physical_precise_round(output_scale);
 
     let out_buf_size = output_size.to_logical(1).to_buffer(1, Transform::Normal);
 

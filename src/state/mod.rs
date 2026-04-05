@@ -229,13 +229,20 @@ pub fn usable_center_for_output(output: &Output) -> Point<f64, Logical> {
     ))
 }
 
-/// Logical output size accounting for transform (90°/270° swap width/height).
+/// Logical output size accounting for scale and transform (90°/270° swap width/height).
 pub fn output_logical_size(output: &Output) -> Size<i32, Logical> {
-    let mode_size = output
+    let scale = output.current_scale().fractional_scale();
+    output
         .current_mode()
-        .map(|m| m.size.to_logical(1))
-        .unwrap_or((1, 1).into());
-    output.current_transform().transform_size(mode_size)
+        .map(|m| {
+            output
+                .current_transform()
+                .transform_size(m.size)
+                .to_f64()
+                .to_logical(scale)
+                .to_i32_ceil()
+        })
+        .unwrap_or((1, 1).into())
 }
 
 /// Get a lock on an output's per-output state.

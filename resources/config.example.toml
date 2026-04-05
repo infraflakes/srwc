@@ -227,6 +227,7 @@
 # "alt+2-finger-pinch-out" = "fit-window"
 # "alt+3-finger-pinch-in" = "toggle-fullscreen"
 # "alt+3-finger-pinch-out" = "toggle-fullscreen"
+# "alt+2-finger-pinch-in" = "close-window"
 
 [gestures.on-canvas]
 # "2-finger-pinch" = "zoom"

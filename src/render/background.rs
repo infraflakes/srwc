@@ -187,15 +187,7 @@ pub fn update_background_element(
     let camera_moved = cur_camera != last_rendered_camera;
     let zoom_changed = cur_zoom != last_rendered_zoom;
     let output_name = output.name();
-    let scale = output.current_scale().integer_scale();
-    let output_size = output
-        .current_mode()
-        .map(|m| {
-            output
-                .current_transform()
-                .transform_size(m.size.to_logical(scale))
-        })
-        .unwrap_or((1, 1).into());
+    let output_size = crate::state::output_logical_size(output);
     let canvas_w = (output_size.w as f64 / cur_zoom).ceil() as i32;
     let canvas_h = (output_size.h as f64 / cur_zoom).ceil() as i32;
     let canvas_area = Rectangle::from_size((canvas_w, canvas_h).into());

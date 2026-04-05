@@ -925,7 +925,11 @@ fn create_surface(
     };
 
     // Each new output gets its own camera centered on its viewport
-    let logical_size = transform.transform_size(output_mode.size.to_logical(1));
+    let logical_size = transform
+        .transform_size(output_mode.size)
+        .to_f64()
+        .to_logical(scale_val)
+        .to_i32_ceil::<i32>();
     let camera = smithay::utils::Point::from((
         -(logical_size.w as f64) / 2.0,
         -(logical_size.h as f64) / 2.0,
@@ -1024,13 +1028,19 @@ fn render_frame(
     } else {
         data.config.inactive_cursor_opacity as f32
     };
-    let (cursor_cam, cursor_zoom) = if data.screenshot_ui.is_open() {
+    let (cursor_cam, _cursor_zoom) = if data.screenshot_ui.is_open() {
         (Point::from((0.0, 0.0)), 1.0)
     } else {
         (cur_camera, cur_zoom)
     };
-    let cursor_elements =
-        crate::render::build_cursor_elements(data, renderer, cursor_cam, cursor_zoom, cursor_alpha);
+    let cursor_elements = crate::render::build_cursor_elements(
+        data,
+        renderer,
+        cursor_cam,
+        cur_zoom,
+        output.current_scale().fractional_scale(),
+        cursor_alpha,
+    );
     let renderer = backend.renderer();
     let elements = crate::render::compose_frame(data, renderer, output, cursor_elements);
 
