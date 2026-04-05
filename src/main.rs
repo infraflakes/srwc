@@ -105,6 +105,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if backend_name == "udev" {
         use std::collections::HashMap;
         use std::sync::{Arc, Mutex};
+        // ServiceChannel: gives xdg-desktop-portal-gnome a dedicated Wayland connection
+        let (service_tx, service_rx) =
+            calloop::channel::channel::<std::os::unix::net::UnixStream>();
+        event_loop
+            .handle()
+            .insert_source(service_rx, |event, _, data: &mut Srwm| {
+                if let calloop::channel::Event::Msg(stream) = event {
+                    tracing::info!("New service channel client connected");
+                    if let Err(e) = data
+                        .display_handle
+                        .insert_client(stream, std::sync::Arc::new(ClientState::default()))
+                    {
+                        tracing::warn!("Failed to insert service channel client: {e}");
+                    }
+                }
+            })
+            .expect("failed to insert service channel source");
+
+        let service_channel = dbus::mutter_service_channel::ServiceChannel::new(service_tx);
+        data.conn_service_channel = dbus::try_start(service_channel);
 
         // Initialize screencasting subsystem (creates the PipeWire calloop channel)
         data.screencasting = Some(screencasting::Screencasting::new(&event_loop.handle()));

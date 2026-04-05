@@ -1,5 +1,5 @@
 pub mod mutter_screen_cast;
-
+pub mod mutter_service_channel;
 use zbus::blocking::Connection;
 use zbus::object_server::Interface;
 
@@ -9,7 +9,7 @@ pub trait Start: Interface {
     fn start(self) -> anyhow::Result<Connection>;
 }
 
-fn try_start<I: Start>(iface: I) -> Option<Connection> {
+pub fn try_start<I: Start>(iface: I) -> Option<Connection> {
     match iface.start() {
         Ok(conn) => Some(conn),
         Err(err) => {

@@ -2289,6 +2289,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-io",
+ "calloop 0.14.4",
  "chrono",
  "dirs",
  "image",

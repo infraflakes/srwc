@@ -503,6 +503,7 @@ pub struct Srwm {
     // -- global: screencasting --
     pub screencasting: Option<crate::screencasting::Screencasting>,
     pub conn_screen_cast: Option<zbus::blocking::Connection>,
+    pub conn_service_channel: Option<zbus::blocking::Connection>,
     pub gbm_device:
         Option<smithay::backend::allocator::gbm::GbmDevice<smithay::backend::drm::DrmDeviceFd>>,
     pub ipc_outputs:
@@ -615,6 +616,7 @@ impl Srwm {
         seat.add_pointer();
         let autostart = config.autostart.clone();
         Self {
+            conn_service_channel: None,
             ipc_outputs: None,
             start_time: Instant::now(),
             display_handle: dh,
