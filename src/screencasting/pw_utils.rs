@@ -223,10 +223,11 @@ impl PipeWire {
             .add_listener_local()
             .error(move |id, seq, res, message| {
                 tracing::warn!(id, seq, res, message, "pw error");
-                if id == PW_ID_CORE && res == -32 {
-                    if let Err(err) = to_srwm_.send(PwToSrwm::FatalError) {
-                        tracing::warn!("error sending FatalError to srwm: {err:?}");
-                    }
+                if id == PW_ID_CORE
+                    && res == -32
+                    && let Err(err) = to_srwm_.send(PwToSrwm::FatalError)
+                {
+                    tracing::warn!("error sending FatalError to srwm: {err:?}");
                 }
             })
             .register();
@@ -861,7 +862,7 @@ impl Cast {
         Duration::ZERO
     }
 
-    fn schedule_redraw(&mut self, output: Output, target_time: Duration) {
+    fn schedule_redraw(&mut self, _output: Output, target_time: Duration) {
         if self.scheduled_redraw.is_some() {
             return;
         }
@@ -1008,14 +1009,14 @@ impl Cast {
 
         let mut has_cursor_update = false;
         let mut redraw_cursor = false;
-        if self.cursor_mode != CursorMode::Hidden {
-            if let Some(cd) = cursor_data {
-                let (damage, _states) = cursor_damage_tracker
-                    .damage_output(1, &cd.relocated)
-                    .unwrap();
-                redraw_cursor = damage.is_some();
-                has_cursor_update = redraw_cursor || *last_cursor_location != Some(cd.location);
-            }
+        if self.cursor_mode != CursorMode::Hidden
+            && let Some(cd) = cursor_data
+        {
+            let (damage, _states) = cursor_damage_tracker
+                .damage_output(1, &cd.relocated)
+                .unwrap();
+            redraw_cursor = damage.is_some();
+            has_cursor_update = redraw_cursor || *last_cursor_location != Some(cd.location);
         }
 
         if damage.is_none() && !has_cursor_update {
@@ -1284,39 +1285,46 @@ fn allocate_dmabuf(
 }
 
 unsafe fn return_unused_buffer(stream: &Stream, pw_buffer: NonNull<pw_buffer>) {
-    let pw_buffer = pw_buffer.as_ptr();
-    let spa_buffer = (*pw_buffer).buffer;
-    let chunk = (*(*spa_buffer).datas).chunk;
-    (*chunk).size = 0;
-    (*chunk).flags = SPA_CHUNK_FLAG_CORRUPTED as i32;
+    unsafe {
+        let pw_buffer = pw_buffer.as_ptr();
+        let spa_buffer = (*pw_buffer).buffer;
+        let chunk = (*(*spa_buffer).datas).chunk;
+        (*chunk).size = 0;
+        (*chunk).flags = SPA_CHUNK_FLAG_CORRUPTED as i32;
 
-    if let Some(header) = find_meta_header(spa_buffer) {
-        let header = header.as_ptr();
-        (*header).flags = SPA_META_HEADER_FLAG_CORRUPTED;
+        if let Some(header) = find_meta_header(spa_buffer) {
+            let header = header.as_ptr();
+            (*header).flags = SPA_META_HEADER_FLAG_CORRUPTED;
+        }
+
+        pw_stream_queue_buffer(stream.as_raw_ptr(), pw_buffer);
     }
-
-    pw_stream_queue_buffer(stream.as_raw_ptr(), pw_buffer);
 }
 
 unsafe fn mark_buffer_as_good(pw_buffer: NonNull<pw_buffer>, sequence: &mut u64) {
-    let pw_buffer = pw_buffer.as_ptr();
-    let spa_buffer = (*pw_buffer).buffer;
-    let chunk = (*(*spa_buffer).datas).chunk;
+    unsafe {
+        let pw_buffer = pw_buffer.as_ptr();
+        let spa_buffer = (*pw_buffer).buffer;
+        let chunk = (*(*spa_buffer).datas).chunk;
 
-    (*chunk).size = 1;
-    (*chunk).flags = SPA_CHUNK_FLAG_NONE as i32;
+        (*chunk).size = 1;
+        (*chunk).flags = SPA_CHUNK_FLAG_NONE as i32;
 
-    *sequence = sequence.wrapping_add(1);
-    if let Some(header) = find_meta_header(spa_buffer) {
-        let header = header.as_ptr();
-        (*header).flags = 0;
-        (*header).seq = *sequence;
+        *sequence = sequence.wrapping_add(1);
+        if let Some(header) = find_meta_header(spa_buffer) {
+            let header = header.as_ptr();
+            (*header).flags = 0;
+            (*header).seq = *sequence;
+        }
     }
 }
 
 unsafe fn find_meta_header(buffer: *mut spa_buffer) -> Option<NonNull<spa_meta_header>> {
-    let p = spa_buffer_find_meta_data(buffer, SPA_META_Header, size_of::<spa_meta_header>()).cast();
-    NonNull::new(p)
+    unsafe {
+        let p =
+            spa_buffer_find_meta_data(buffer, SPA_META_Header, size_of::<spa_meta_header>()).cast();
+        NonNull::new(p)
+    }
 }
 
 unsafe fn add_invisible_cursor(spa_buffer: *mut spa_buffer) {

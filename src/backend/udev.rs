@@ -540,6 +540,13 @@ pub fn init_udev(
                                 } => {
                                     tracing::info!("Hotplug: CRTC {crtc:?} disconnected");
                                     if let Some(surface) = surfaces.remove(&crtc) {
+                                        // Remove from screencast output map
+                                        if let Some(ref ipc_outputs) = data.ipc_outputs {
+                                            ipc_outputs
+                                                .lock()
+                                                .unwrap()
+                                                .remove(&surface.output.name());
+                                        }
                                         srwm::protocols::foreign_toplevel::send_output_leave_all(
                                             &mut data.foreign_toplevel_state,
                                             &surface.output,
@@ -864,6 +871,20 @@ fn create_surface(
     );
     output.set_preferred(output_mode);
     output.create_global::<Srwm>(dh);
+    if let Some(ref ipc_outputs) = state.ipc_outputs {
+        let transform = output.current_transform();
+        let transformed_size = transform.transform_size(output_mode.size);
+        ipc_outputs.lock().unwrap().insert(
+            connector_name.clone(),
+            crate::dbus::mutter_screen_cast::OutputInfo {
+                name: connector_name.clone(),
+                x: layout_position.x,
+                y: layout_position.y,
+                width: transformed_size.w as u32,
+                height: transformed_size.h as u32,
+            },
+        );
+    }
 
     let allocator = GbmAllocator::new(
         gbm.clone(),

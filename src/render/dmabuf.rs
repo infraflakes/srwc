@@ -1,4 +1,4 @@
-use anyhow::{Context, ensure};
+use anyhow::Context;
 use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::allocator::{Buffer, Fourcc};
 use smithay::backend::renderer::element::RenderElement;

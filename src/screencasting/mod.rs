@@ -10,11 +10,9 @@ use smithay::backend::allocator::gbm::GbmDevice;
 use smithay::backend::drm::DrmDeviceFd;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::output::Output;
-use smithay::utils::{Physical, Point, Scale, Size};
+use smithay::utils::{Physical, Scale, Size};
 
-use crate::dbus::mutter_screen_cast::{
-    self, CastSessionId, CursorMode, ScreenCastToSrwm, StreamTargetId,
-};
+use crate::dbus::mutter_screen_cast::{self, CastSessionId, ScreenCastToSrwm, StreamTargetId};
 use crate::render::OutputRenderElements;
 use crate::state::Srwm;
 
@@ -76,30 +74,29 @@ impl Srwm {
             PwToSrwm::Redraw { stream_id } => {
                 // Request a redraw for the output associated with this cast.
                 let casting = self.screencasting.as_ref();
-                if let Some(casting) = casting {
-                    if let Some(cast) = casting.casts.iter().find(|c| c.stream_id == stream_id) {
-                        if cast.is_active() {
-                            // Trigger redraws on all active crtcs
-                            self.drm
-                                .redraws_needed
-                                .extend(self.drm.active_crtcs.iter().copied());
-                        }
-                    }
+                if let Some(casting) = casting
+                    && let Some(cast) = casting.casts.iter().find(|c| c.stream_id == stream_id)
+                    && cast.is_active()
+                {
+                    // Trigger redraws on all active crtcs
+                    self.drm
+                        .redraws_needed
+                        .extend(self.drm.active_crtcs.iter().copied());
                 }
             }
             PwToSrwm::FatalError => {
                 tracing::warn!("stopping PipeWire due to fatal error");
-                if let Some(ref mut casting) = self.screencasting {
-                    if let Some(pw) = casting.pipewire.take() {
-                        let mut ids = HashSet::new();
-                        for cast in &casting.casts {
-                            ids.insert(cast.session_id);
-                        }
-                        for id in ids {
-                            self.stop_cast(id);
-                        }
-                        self.loop_handle.remove(pw.token);
+                if let Some(ref mut casting) = self.screencasting
+                    && let Some(pw) = casting.pipewire.take()
+                {
+                    let mut ids = HashSet::new();
+                    for cast in &casting.casts {
+                        ids.insert(cast.session_id);
                     }
+                    for id in ids {
+                        self.stop_cast(id);
+                    }
+                    self.loop_handle.remove(pw.token);
                 }
             }
         }
@@ -125,7 +122,7 @@ impl Srwm {
                             return;
                         };
 
-                        let (size, refresh) = cast_params_for_output(&output);
+                        let (size, refresh) = cast_params_for_output(output);
                         (
                             CastTarget::Output {
                                 name: output.name(),

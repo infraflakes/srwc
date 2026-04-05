@@ -3,7 +3,7 @@ pub mod mutter_screen_cast;
 use zbus::blocking::Connection;
 use zbus::object_server::Interface;
 
-pub use mutter_screen_cast::{ScreenCast, ScreenCastToSrwm};
+pub use mutter_screen_cast::ScreenCast;
 
 pub trait Start: Interface {
     fn start(self) -> anyhow::Result<Connection>;

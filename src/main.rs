@@ -123,6 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Build the output map for the D-Bus interface
         let ipc_outputs = Arc::new(Mutex::new(HashMap::new()));
+        data.ipc_outputs = Some(ipc_outputs.clone());
 
         // Create and start the ScreenCast D-Bus service
         let screen_cast = dbus::ScreenCast::new(ipc_outputs, to_srwm);
@@ -185,11 +186,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Import full environment AFTER targets are alive, so D-Bus-activated
         // services find graphical-session.target active.
-        let cmd = "systemctl --user import-environment; \
-           hash dbus-update-activation-environment 2>/dev/null && \
-           dbus-update-activation-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP";
+        let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
+        let cmd = format!(
+            "systemctl --user import-environment {session_vars}; \
+     hash dbus-update-activation-environment 2>/dev/null && \
+     dbus-update-activation-environment {session_vars}"
+        );
         match std::process::Command::new("/bin/sh")
-            .args(["-c", cmd])
+            .args(["-c", &cmd])
             .spawn()
         {
             Ok(mut child) => {

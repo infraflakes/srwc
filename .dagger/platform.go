@@ -12,10 +12,10 @@ func (m *SrwmWayland) base(os string) *dagger.Container {
 			From("archlinux:latest").
 			WithExec([]string{"pacman", "-Syu", "--noconfirm"}).
 			WithExec([]string{"pacman", "-S", "--noconfirm",
-				"pkgconf", "binutils", "gcc", "make", "git", "rust",
+				"pkgconf", "binutils", "gcc", "make", "git", "rust", "clang",
 				"libdisplay-info", "libinput", "wayland", "libxkbcommon",
 				"pixman", "libx11", "libxcursor", "libxrandr", "libxi",
-				"libxcb", "mesa", "libglvnd", "seatd", "libdrm",
+				"libxcb", "mesa", "libglvnd", "seatd", "libdrm", "libpipewire",
 			})
 
 	case "fedora":
@@ -27,7 +27,7 @@ func (m *SrwmWayland) base(os string) *dagger.Container {
 				"libxkbcommon-devel", "pixman-devel", "libX11-devel",
 				"libXcursor-devel", "libXrandr-devel", "libXi-devel",
 				"libxcb-devel", "mesa-libGL-devel", "libseat-devel", "libdrm-devel",
-				"mesa-libgbm-devel",
+				"mesa-libgbm-devel", "pipewire-devel", "clang-devel",
 			})
 
 	default:
@@ -40,6 +40,7 @@ func (m *SrwmWayland) base(os string) *dagger.Container {
 				"libinput-dev", "libudev-dev", "libgbm-dev", "libxkbcommon-dev",
 				"libwayland-dev", "libdrm-dev", "libpixman-1-dev", "libx11-dev",
 				"libxcursor-dev", "libxrandr-dev", "libxi-dev", "libxcb1-dev", "libgl-dev",
+				"libpipewire-0.3-dev",
 			})
 	}
 }

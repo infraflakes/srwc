@@ -1,5 +1,6 @@
 mod animation;
 use std::path::PathBuf;
+use std::sync::Arc;
 mod cursor;
 pub mod fit;
 mod fullscreen;
@@ -504,6 +505,8 @@ pub struct Srwm {
     pub conn_screen_cast: Option<zbus::blocking::Connection>,
     pub gbm_device:
         Option<smithay::backend::allocator::gbm::GbmDevice<smithay::backend::drm::DrmDeviceFd>>,
+    pub ipc_outputs:
+        Option<Arc<Mutex<HashMap<String, crate::dbus::mutter_screen_cast::OutputInfo>>>>,
 }
 
 /// Per-client state stored by wayland-server for each connected client.
@@ -612,6 +615,7 @@ impl Srwm {
         seat.add_pointer();
         let autostart = config.autostart.clone();
         Self {
+            ipc_outputs: None,
             start_time: Instant::now(),
             display_handle: dh,
             loop_handle,
