@@ -59,6 +59,36 @@ impl Srwm {
             return;
         }
 
+        // Intercept buttons for screenshot UI
+        if self.screenshot_ui.is_open() && button == config::BTN_LEFT {
+            let serial = SERIAL_COUNTER.next_serial();
+            let time = Event::time_msec(&event);
+            let screen_pos = pointer.current_location();
+
+            if button_state == ButtonState::Pressed {
+                if let Some(output) = self.active_output() {
+                    let scale = output.current_scale().fractional_scale();
+                    let pt: smithay::utils::Point<i32, smithay::utils::Physical> =
+                        Point::from(((screen_pos.x * scale) as i32, (screen_pos.y * scale) as i32));
+                    self.screenshot_ui.pointer_down(&output, pt);
+                }
+            } else {
+                self.screenshot_ui.pointer_up();
+            }
+
+            pointer.button(
+                self,
+                &ButtonEvent {
+                    button,
+                    state: button_state,
+                    serial,
+                    time,
+                },
+            );
+            pointer.frame(self);
+            return;
+        }
+
         if button_state == ButtonState::Pressed {
             self.with_output_state(|os| {
                 os.last_scroll_pan = None;

@@ -297,17 +297,17 @@ pub(super) fn default_bindings(
                 modifiers: Modifiers::EMPTY,
                 sym: Keysym::from(keysyms::KEY_Print),
             },
-            Action::Spawn("grim - | wl-copy".into()),
+            Action::Screenshot,
         ),
         (
             KeyCombo {
                 modifiers: Modifiers {
-                    shift: true,
+                    ctrl: true,
                     ..Modifiers::EMPTY
                 },
                 sym: Keysym::from(keysyms::KEY_Print),
             },
-            Action::Spawn("grim -g \"$(slurp -d)\" - | wl-copy".into()),
+            Action::ScreenshotScreen,
         ),
         // Lock screen
         (

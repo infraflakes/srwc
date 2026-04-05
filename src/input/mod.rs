@@ -195,6 +195,14 @@ impl Srwm {
                 if key_state == KeyState::Pressed {
                     let sym = handle.modified_sym();
 
+                    // Intercept keys for screenshot UI
+                    if state.screenshot_ui.is_open() {
+                        if let Some(action) = state.screenshot_ui.action(sym, *modifiers) {
+                            state.execute_action(&action);
+                        }
+                        return FilterResult::Intercept(None);
+                    }
+
                     // VT switching: Ctrl+Alt+F1..F12 produces XF86Switch_VT_1..12
                     let raw = sym.raw();
                     if (0x1008FE01..=0x1008FE0C).contains(&raw) {
@@ -508,6 +516,30 @@ impl Srwm {
             .with_output_state(|os| screen_to_canvas(ScreenPos(screen_pos), os.camera, os.zoom).0)
             .unwrap_or_default();
 
+        // Intercept pointer motion for screenshot UI
+        if self.screenshot_ui.is_open() {
+            let serial = SERIAL_COUNTER.next_serial();
+            let time = Event::time_msec(&event);
+            if let Some(output) = self.active_output() {
+                let scale = output.current_scale().fractional_scale();
+                let pt: smithay::utils::Point<i32, smithay::utils::Physical> =
+                    Point::from(((screen_pos.x * scale) as i32, (screen_pos.y * scale) as i32));
+                self.screenshot_ui.pointer_motion(pt, &output);
+            }
+            let pointer = self.pointer();
+            pointer.motion(
+                self,
+                None, // No focus when screenshot UI is open
+                &MotionEvent {
+                    location: screen_pos,
+                    serial,
+                    time,
+                },
+            );
+            pointer.frame(self);
+            return;
+        }
+
         // When locked, pointer only targets the lock surface
         if !matches!(self.session_lock, crate::state::SessionLock::Unlocked) {
             let serial = SERIAL_COUNTER.next_serial();
@@ -547,6 +579,36 @@ impl Srwm {
     /// Multi-monitor aware: converts to layout space for output crossing,
     /// then to target output's canvas coords.
     fn on_pointer_motion_relative<I: InputBackend>(&mut self, event: I::PointerMotionEvent) {
+        // Intercept pointer motion for screenshot UI
+        if self.screenshot_ui.is_open() {
+            let pointer = self.pointer();
+            let old_pos = pointer.current_location();
+            let delta = event.delta();
+            let new_pos: Point<f64, smithay::utils::Logical> =
+                (old_pos.x + delta.x, old_pos.y + delta.y).into();
+
+            if let Some(output) = self.active_output() {
+                let scale = output.current_scale().fractional_scale();
+                let pt: smithay::utils::Point<i32, smithay::utils::Physical> =
+                    Point::from(((new_pos.x * scale) as i32, (new_pos.y * scale) as i32));
+                self.screenshot_ui.pointer_motion(pt, &output);
+            }
+
+            let serial = SERIAL_COUNTER.next_serial();
+            let time = Event::time_msec(&event);
+            pointer.motion(
+                self,
+                None,
+                &MotionEvent {
+                    location: new_pos,
+                    serial,
+                    time,
+                },
+            );
+            pointer.frame(self);
+            return;
+        }
+
         // When locked, pointer only targets the lock surface
         if !matches!(self.session_lock, crate::state::SessionLock::Unlocked) {
             let pointer = self.pointer();

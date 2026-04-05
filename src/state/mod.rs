@@ -71,6 +71,7 @@ use smithay::reexports::drm::control::crtc;
 
 use crate::backend::Backend;
 use crate::input::gestures::GestureState;
+use crate::screenshot_ui::ScreenshotUi;
 use srwm::canvas::MomentumState;
 use srwm::config::Config;
 use srwm::window_ext::WindowExt;
@@ -480,6 +481,12 @@ pub struct Srwm {
     pub xwayland: XWaylandContext,
 
     // -- global: SSD title bar double-click --
+    // -- global: screenshot UI --
+    pub screenshot_ui: ScreenshotUi,
+    pub pending_screenshot: bool,
+    pub pending_screenshot_screen: bool,
+    pub pending_screenshot_confirm: Option<bool>,
+
     pub last_titlebar_click: Option<(
         Instant,
         smithay::reexports::wayland_server::backend::ObjectId,
@@ -676,6 +683,10 @@ impl Srwm {
                 display: None,
                 client: None,
             },
+            screenshot_ui: ScreenshotUi::new(),
+            pending_screenshot: false,
+            pending_screenshot_screen: false,
+            pending_screenshot_confirm: None,
             last_titlebar_click: None,
         }
     }
@@ -1351,6 +1362,82 @@ impl Srwm {
 
     pub fn load_xcursor(&mut self, name: &str) -> Option<&CursorFrames> {
         self.cursor.load_xcursor(name)
+    }
+
+    pub fn confirm_screenshot(&mut self, write_to_disk: bool) {
+        if !self.screenshot_ui.is_open() {
+            return;
+        }
+        self.pending_screenshot_confirm = Some(write_to_disk);
+    }
+
+    pub fn save_screenshot(
+        &mut self,
+        size: Size<i32, Physical>,
+        pixels: &[u8],
+        write_to_disk: bool,
+    ) {
+        // Fallback for clipboard if not writing to disk
+        if !write_to_disk {
+            tracing::info!("Screenshot saved to clipboard via wl-copy");
+            use std::io::Write;
+            let cmd = std::process::Command::new("wl-copy")
+                .arg("-t")
+                .arg("image/png")
+                .stdin(std::process::Stdio::piped())
+                .spawn();
+            if let Ok(mut child) = cmd {
+                let mut png_data = Vec::new();
+                {
+                    let mut encoder =
+                        png::Encoder::new(&mut png_data, size.w as u32, size.h as u32);
+                    encoder.set_color(png::ColorType::Rgba);
+                    encoder.set_depth(png::BitDepth::Eight);
+                    if let Ok(mut writer) = encoder.write_header() {
+                        let _ = writer.write_image_data(pixels);
+                    }
+                }
+                if let Some(mut stdin) = child.stdin.take() {
+                    let _ = stdin.write_all(&png_data);
+                }
+            }
+            return;
+        }
+
+        // Write to disk
+        let Some(dir) = dirs::picture_dir() else {
+            tracing::warn!("Could not find picture dir");
+            return;
+        };
+        let screenshots_dir = dir.join("Screenshots");
+        let _ = std::fs::create_dir_all(&screenshots_dir);
+
+        let now = chrono::Local::now();
+        let filename = format!("screenshot-{}.png", now.format("%Y-%m-%d-%H-%M-%S"));
+        let path = screenshots_dir.join(filename);
+
+        if let Ok(file) = std::fs::File::create(&path) {
+            let w = &mut std::io::BufWriter::new(file);
+            let mut encoder = png::Encoder::new(w, size.w as u32, size.h as u32);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            if let Ok(mut writer) = encoder.write_header()
+                && writer.write_image_data(pixels).is_ok()
+            {
+                tracing::info!("Screenshot saved to {:?}", path);
+                // Also fire notify-send
+                let _ = std::process::Command::new("notify-send")
+                    .args([
+                        "-a",
+                        "srwm",
+                        "-i",
+                        "camera",
+                        "Screenshot Saved",
+                        path.to_str().unwrap(),
+                    ])
+                    .spawn();
+            }
+        }
     }
 }
 

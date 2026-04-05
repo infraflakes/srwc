@@ -135,6 +135,8 @@ pub fn parse_action(s: &str) -> Result<Action, String> {
         }
         "reload-config" => Ok(Action::ReloadConfig),
         "quit" => Ok(Action::Quit),
+        "screenshot" => Ok(Action::Screenshot),
+        "screenshot-screen" => Ok(Action::ScreenshotScreen),
         other => Err(format!("unknown action: {other}")),
     }
 }

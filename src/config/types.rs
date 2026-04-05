@@ -59,6 +59,11 @@ pub enum Action {
     FocusCenter,
     ReloadConfig,
     Quit,
+    Screenshot,
+    ScreenshotScreen,
+    ConfirmScreenshot { write_to_disk: bool },
+    CancelScreenshot,
+    ScreenshotTogglePointer,
 }
 
 impl Action {

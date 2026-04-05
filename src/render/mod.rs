@@ -583,6 +583,13 @@ pub fn compose_frame(
         return compose_lock_frame(state, renderer, output, cursor_elements);
     }
 
+    // Screenshot UI: if open, render the frozen screenshot and overlay rects
+    if state.screenshot_ui.is_open() {
+        let mut all = cursor_elements;
+        all.extend(state.screenshot_ui.render_output(renderer, output));
+        return all;
+    }
+
     // Ensure this output has a background element (lazy init per output, and re-init after config reload)
     if !state.render.cached_bg_elements.contains_key(&output.name())
         && !state.render.cached_tile_bg.contains_key(&output.name())

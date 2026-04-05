@@ -508,6 +508,23 @@ impl Srwm {
                 self.save_cameras();
                 self.loop_signal.stop();
             }
+            Action::Screenshot => {
+                // Open interactive screenshot UI — capture happens in render loop
+                // where the renderer is available.
+                self.pending_screenshot = true;
+            }
+            Action::ScreenshotScreen => {
+                self.pending_screenshot_screen = true;
+            }
+            Action::ConfirmScreenshot { write_to_disk } => {
+                self.confirm_screenshot(*write_to_disk);
+            }
+            Action::CancelScreenshot => {
+                self.screenshot_ui.close();
+            }
+            Action::ScreenshotTogglePointer => {
+                self.screenshot_ui.toggle_pointer();
+            }
         }
     }
 

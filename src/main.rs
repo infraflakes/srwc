@@ -5,6 +5,7 @@ mod grabs;
 mod handlers;
 mod input;
 mod render;
+mod screenshot_ui;
 mod state;
 
 use state::{ClientState, Srwm};
