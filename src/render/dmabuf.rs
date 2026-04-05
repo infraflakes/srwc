@@ -1,6 +1,6 @@
 use anyhow::Context;
+use smithay::backend::allocator::Fourcc;
 use smithay::backend::allocator::dmabuf::Dmabuf;
-use smithay::backend::allocator::{Buffer, Fourcc};
 use smithay::backend::renderer::element::RenderElement;
 use smithay::backend::renderer::gles::{GlesMapping, GlesRenderer, GlesTarget, GlesTexture};
 use smithay::backend::renderer::sync::SyncPoint;
@@ -18,20 +18,6 @@ pub fn render_to_dmabuf(
 ) -> anyhow::Result<SyncPoint> {
     let mut target = renderer.bind(&mut dmabuf).context("error binding dmabuf")?;
     render_elements(renderer, &mut target, size, scale, transform, elements)
-}
-
-/// Clear a DMA-BUF to transparent.
-pub fn clear_dmabuf(renderer: &mut GlesRenderer, mut dmabuf: Dmabuf) -> anyhow::Result<SyncPoint> {
-    let size = dmabuf.size();
-    let size = size.to_logical(1, Transform::Normal).to_physical(1);
-    let mut target = renderer.bind(&mut dmabuf).context("error binding dmabuf")?;
-    let mut frame = renderer
-        .render(&mut target, size, Transform::Normal)
-        .context("error starting frame")?;
-    frame
-        .clear(Color32F::TRANSPARENT, &[Rectangle::from_size(size)])
-        .context("error clearing")?;
-    frame.finish().context("error finishing frame")
 }
 
 /// Render elements to a texture then download to CPU memory.
@@ -53,7 +39,7 @@ pub fn render_and_download(
         let mut target = renderer
             .bind(&mut texture)
             .context("error binding texture")?;
-        render_elements(renderer, &mut target, size, scale, transform, elements)?;
+        let _ = render_elements(renderer, &mut target, size, scale, transform, elements)?;
     }
 
     let target = renderer
@@ -97,15 +83,4 @@ fn render_elements(
     }
 
     frame.finish().context("error finishing frame")
-}
-
-/// Compute the encompassing geometry of a set of elements.
-pub fn encompassing_geo(
-    scale: Scale<f64>,
-    elements: impl Iterator<Item = impl smithay::backend::renderer::element::Element>,
-) -> Rectangle<i32, Physical> {
-    elements
-        .map(|ele| ele.geometry(scale))
-        .reduce(|a, b| a.merge(b))
-        .unwrap_or_default()
 }

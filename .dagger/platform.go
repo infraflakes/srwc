@@ -40,7 +40,7 @@ func (m *SrwmWayland) base(os string) *dagger.Container {
 				"libinput-dev", "libudev-dev", "libgbm-dev", "libxkbcommon-dev",
 				"libwayland-dev", "libdrm-dev", "libpixman-1-dev", "libx11-dev",
 				"libxcursor-dev", "libxrandr-dev", "libxi-dev", "libxcb1-dev", "libgl-dev",
-				"libpipewire-0.3-dev",
+				"libpipewire-0.3-dev", "libclang-dev",
 			})
 	}
 }

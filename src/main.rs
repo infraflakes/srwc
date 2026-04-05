@@ -11,8 +11,8 @@ mod screencasting;
 mod screenshot_ui;
 mod state;
 
-use smithay::wayland::shell::xdg::XdgToplevelSurfaceData;  
 use smithay::reexports::wayland_server::Resource;
+use smithay::wayland::shell::xdg::XdgToplevelSurfaceData;
 use state::{ClientState, Srwm};
 use std::sync::Arc;
 

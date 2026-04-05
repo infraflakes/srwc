@@ -11,9 +11,9 @@ use smithay::backend::allocator::gbm::GbmDevice;
 use smithay::backend::drm::DrmDeviceFd;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::output::Output;
-use smithay::utils::{Physical, Scale, Size};
-use smithay::wayland::seat::WaylandFocus;  
 use smithay::reexports::wayland_server::Resource;
+use smithay::utils::{Physical, Scale, Size};
+use smithay::wayland::seat::WaylandFocus;
 
 use crate::dbus::mutter_screen_cast::{self, CastSessionId, ScreenCastToSrwm, StreamTargetId};
 use crate::render::OutputRenderElements;

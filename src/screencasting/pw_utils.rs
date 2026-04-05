@@ -36,8 +36,8 @@ use smithay::backend::allocator::{Format, Fourcc};
 use smithay::backend::drm::DrmDeviceFd;
 use smithay::backend::renderer::ExportMem;
 use smithay::backend::renderer::damage::OutputDamageTracker;
-use smithay::backend::renderer::element::utils::{Relocate, RelocateRenderElement};
-use smithay::backend::renderer::element::{Element, RenderElement};
+use smithay::backend::renderer::element::RenderElement;
+use smithay::backend::renderer::element::utils::RelocateRenderElement;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::backend::renderer::sync::SyncPoint;
 use smithay::output::{Output, OutputModeSource};
@@ -51,9 +51,7 @@ use zbus::object_server::SignalEmitter;
 
 use crate::dbus::mutter_screen_cast::{self, CastSessionId, CastStreamId, CursorMode};
 use crate::render::OutputRenderElements;
-use crate::render::dmabuf::{
-    clear_dmabuf, encompassing_geo, render_and_download, render_to_dmabuf,
-};
+use crate::render::dmabuf::{render_and_download, render_to_dmabuf};
 use crate::state::Srwm;
 
 // Give a 0.1 ms allowance for presentation time errors.
@@ -164,30 +162,6 @@ pub struct CursorData<'a, E> {
     hotspot: Point<i32, Physical>,
     size: Size<i32, Physical>,
     scale: Scale<f64>,
-}
-
-impl<'a, E: Element> CursorData<'a, E> {
-    pub fn compute(
-        elements: &'a [E],
-        location: Point<f64, smithay::utils::Logical>,
-        scale: Scale<f64>,
-    ) -> Self {
-        let location = location.to_physical_precise_round(scale);
-
-        let geo = encompassing_geo(scale, elements.iter());
-        let relocated = Vec::from_iter(elements.iter().map(|elem| {
-            RelocateRenderElement::from_element(elem, geo.loc.upscale(-1), Relocate::Relative)
-        }));
-
-        Self {
-            original: elements,
-            relocated,
-            location,
-            hotspot: location - geo.loc,
-            size: geo.size,
-            scale,
-        }
-    }
 }
 
 macro_rules! make_params {
@@ -783,10 +757,6 @@ impl Cast {
         self.inner.borrow().is_active
     }
 
-    pub fn node_id(&self) -> Option<u32> {
-        self.inner.borrow().node_id
-    }
-
     pub fn ensure_size(&self, size: Size<i32, Physical>) -> anyhow::Result<CastSizeChange> {
         let mut inner = self.inner.borrow_mut();
 
@@ -821,26 +791,6 @@ impl Cast {
             .context("error updating stream params")?;
 
         Ok(CastSizeChange::Pending)
-    }
-
-    pub fn set_refresh(&mut self, refresh: u32) -> anyhow::Result<()> {
-        let mut inner = self.inner.borrow_mut();
-
-        if inner.refresh == refresh {
-            return Ok(());
-        }
-
-        tracing::debug!("cast FPS changed, updating stream FPS");
-        inner.refresh = refresh;
-
-        let size = inner.state.expected_format_size();
-        let params;
-        make_params!(params, &self.formats, size, refresh, self.offer_alpha);
-        self.stream
-            .update_params(params)
-            .context("error updating stream params")?;
-
-        Ok(())
     }
 
     fn compute_extra_delay(&self, target_frame_time: Duration) -> Duration {
@@ -1073,51 +1023,6 @@ impl Cast {
             }
         }
     }
-
-    pub fn dequeue_buffer_and_clear(&mut self, renderer: &mut GlesRenderer) -> bool {
-        let mut inner = self.inner.borrow_mut();
-
-        if let CastState::Ready {
-            damage_tracker,
-            cursor_damage_tracker,
-            ..
-        } = &mut inner.state
-        {
-            *damage_tracker = None;
-            *cursor_damage_tracker = None;
-        };
-        drop(inner);
-
-        let Some(pw_buffer) = self.dequeue_available_buffer() else {
-            tracing::warn!("no available buffer in pw stream, skipping frame");
-            return false;
-        };
-        let buffer = pw_buffer.as_ptr();
-
-        unsafe {
-            let spa_buffer = (*buffer).buffer;
-
-            if self.cursor_mode == CursorMode::Metadata {
-                add_invisible_cursor(spa_buffer);
-            }
-
-            let fd = (*(*spa_buffer).datas).fd;
-            let dmabuf = self.inner.borrow().dmabufs[&fd].clone();
-
-            match clear_dmabuf(renderer, dmabuf) {
-                Ok(sync_point) => {
-                    mark_buffer_as_good(pw_buffer, &mut self.sequence_counter);
-                    self.queue_after_sync(pw_buffer, sync_point);
-                    true
-                }
-                Err(err) => {
-                    tracing::warn!("error clearing dmabuf: {err:?}");
-                    return_unused_buffer(&self.stream, pw_buffer);
-                    false
-                }
-            }
-        }
-    }
 }
 
 impl CastState {
@@ -1326,42 +1231,6 @@ unsafe fn find_meta_header(buffer: *mut spa_buffer) -> Option<NonNull<spa_meta_h
         let p =
             spa_buffer_find_meta_data(buffer, SPA_META_Header, size_of::<spa_meta_header>()).cast();
         NonNull::new(p)
-    }
-}
-
-unsafe fn add_invisible_cursor(spa_buffer: *mut spa_buffer) {
-    unsafe {
-        let cursor_meta_ptr: *mut spa_meta_cursor = spa_buffer_find_meta_data(
-            spa_buffer,
-            SPA_META_Cursor,
-            mem::size_of::<spa_meta_cursor>(),
-        )
-        .cast();
-        let Some(cursor_meta) = cursor_meta_ptr.as_mut() else {
-            return;
-        };
-
-        cursor_meta.id = 1;
-        cursor_meta.position.x = 0;
-        cursor_meta.position.y = 0;
-        cursor_meta.hotspot.x = 0;
-        cursor_meta.hotspot.y = 0;
-        cursor_meta.bitmap_offset = BITMAP_META_OFFSET as _;
-
-        let bitmap_meta_ptr = cursor_meta_ptr
-            .byte_add(BITMAP_META_OFFSET)
-            .cast::<spa_meta_bitmap>();
-        let bitmap_meta = &mut *bitmap_meta_ptr;
-
-        bitmap_meta.offset = BITMAP_DATA_OFFSET as _;
-        bitmap_meta.size.width = 1;
-        bitmap_meta.size.height = 1;
-        bitmap_meta.stride = CURSOR_BPP as i32;
-        bitmap_meta.format = CURSOR_FORMAT;
-
-        let bitmap_data = bitmap_meta_ptr.cast::<u8>().add(BITMAP_DATA_OFFSET);
-        let bitmap_slice = slice::from_raw_parts_mut(bitmap_data, CURSOR_BITMAP_SIZE);
-        bitmap_slice[..4].copy_from_slice(&[0, 0, 0, 0]);
     }
 }
 
