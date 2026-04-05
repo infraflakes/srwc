@@ -168,8 +168,8 @@
 # "XF86AudioMute" = "spawn wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
 # "XF86MonBrightnessUp" = "spawn brightnessctl set +5%"
 # "XF86MonBrightnessDown" = "spawn brightnessctl set 5%-"
-# "Print" = "spawn grim - | wl-copy"
-# "shift+Print" = "spawn grim -g \"$(slurp -d)\" - | wl-copy"
+# "Print" = "screenshot" # screenshot: open interactive screenshot UI (drag to select, Space/Enter to save, Ctrl+C clipboard only, Escape to cancel, P to hide/show cursor)
+# "ctrl+Print" = "screenshot-screen" # screenshot-screen: instant full-screen screenshot to clipboard + disk
 
 # Mouse bindings: "Modifier+...+Trigger" = "action"
 # Context-aware: on-window, on-canvas, anywhere.

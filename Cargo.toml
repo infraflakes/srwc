@@ -29,6 +29,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 libc = "0.2.184"
 png = "0.18.1"
-anyhow = "1.0"
-dirs = "5.0"
+dirs = "6.0.0"
 chrono = "0.4.44"
