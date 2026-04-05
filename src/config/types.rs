@@ -56,7 +56,6 @@ pub enum Action {
     ToggleFullscreen,
     FitWindow,
     SendToOutput(Direction),
-    FocusCenter,
     ReloadConfig,
     Quit,
     Screenshot,

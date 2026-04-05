@@ -107,7 +107,7 @@
 #   nudge-window <dir>      — move focused window by nudge_step px
 #   pan-viewport <dir>      — pan camera by pan_step px
 #   center-window           — center viewport on focused window + reset zoom
-#   focus-center            — focus + center on the window under the pointer + reset zoom
+
 #   center-nearest <dir>    — navigate to nearest window in direction
 #   cycle-windows forward   — Alt-Tab style window cycling
 #   cycle-windows backward  — reverse cycle
@@ -132,7 +132,7 @@
 # "mod+f" = "toggle-fullscreen"
 # "mod+m" = "fit-window"
 # "mod+c" = "center-window"
-# "mod+x" = "focus-center"
+
 # "mod+a" = "home-toggle"
 # "mod+up" = "center-nearest up"
 # "mod+down" = "center-nearest down"
