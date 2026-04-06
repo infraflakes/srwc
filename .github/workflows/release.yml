@@ -21,20 +21,29 @@ jobs:
         uses: dagger/dagger-for-github@v8.4.0
         with:
           verb: call
-          args: build --source=. --distro=${{ matrix.distro }} export --path=./bin
+          args: build --source=. --distro=${{ matrix.distro }} export --path=./output/srwc
 
       - name: Prepare Artifact
         run: |
-          cd bin
-          new_name="srwc-${{ github.ref_name }}-linux-amd64-${{ matrix.distro }}"
-          mv srwc "$new_name"
-          sha256sum "$new_name" > "${new_name}.sha256"
+          mkdir -p dist
+          
+          SOURCE_FILE="./output/srwc"
+          TARGET_NAME="srwc-${{ github.ref_name }}-linux-amd64-${{ matrix.distro }}"
+          
+          if [ -f "$SOURCE_FILE" ]; then
+            mv "$SOURCE_FILE" "dist/$TARGET_NAME"
+            cd dist
+            sha256sum "$TARGET_NAME" > "${TARGET_NAME}.sha256"
+          else
+            echo "Error: Binary not found at $SOURCE_FILE"
+            exit 1
+          fi
 
       - name: Upload to Workflow Storage
         uses: actions/upload-artifact@v4
         with:
           name: bin-${{ matrix.distro }}
-          path: bin/*
+          path: dist/*
           retention-days: 1
 
   # STAGE 2: Aggregate and Release
