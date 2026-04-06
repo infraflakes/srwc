@@ -6,25 +6,25 @@ SYSCONFDIR ?= /etc
 .PHONY: build build-all build-verbose build-all-verbose fmt install uninstall test clean
 
 # Default OS if you just hit enter
-DEFAULT_OS=debian
+DEFAULT_DISTRO := debian
 
 build: clean
-	@echo "Select target OS [debian|arch|fedora] (default: $(DEFAULT_OS)):"
-	@read -p "> " OS; \
-	SELECTED_OS=$${OS:-$(DEFAULT_OS)}; \
-	echo "Building for $$SELECTED_OS..."; \
-	dagger call build --source=. --os=$$SELECTED_OS export --path=./target/release/srwc-$$SELECTED_OS
+	@echo "Select target distro [debian|arch|fedora] (default: $(DEFAULT_DISTRO)):"
+	@read -p "> " DISTRO; \
+	SELECTED_DISTRO=$${DISTRO:-$(DEFAULT_DISTRO)}; \
+	echo "Building for $$SELECTED_DISTRO..."; \
+	dagger call build --source=. --distro=$$SELECTED_DISTRO export --path=./target/release/srwc-$$SELECTED_DISTRO
 
 build-all: clean
 	@echo "Launching parallel builds for distros"
 	dagger call build-all --source=. export --path=./target/release
 
 build-verbose: clean
-	@echo "Select target OS [debian|arch|fedora] (default: $(DEFAULT_OS)):"
-	@read -p "> " OS; \
-	SELECTED_OS=$${OS:-$(DEFAULT_OS)}; \
-	echo "Building for $$SELECTED_OS..."; \
-	dagger call build --source=. --os=$$SELECTED_OS --progress=plain export --path=./target/release/srwc-$$SELECTED_OS
+	@echo "Select target distro [debian|arch|fedora] (default: $(DEFAULT_DISTRO)):"
+	@read -p "> " DISTRO; \
+	SELECTED_DISTRO=$${DISTRO:-$(DEFAULT_DISTRO)}; \
+	echo "Building for $$SELECTED_DISTRO..."; \
+	dagger call build --source=. --progress=plain --distro=$$SELECTED_DISTRO export --path=./target/release/srwc-$$SELECTED_DISTRO
 
 build-all-verbose: clean
 	@echo "Launching parallel builds for distros"

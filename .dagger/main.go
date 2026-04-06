@@ -20,6 +20,7 @@ func (m *Srwc) Build(
 		WithDirectory("/src", source.WithoutDirectory("target")).
 		WithWorkdir("/src").
 		WithExec([]string{"cargo", "build", "--release"}).
+		WithExec([]string{"upx", "--best", "--lzma", "target/release/srwc"}).
 		File("target/release/srwc")
 }
 

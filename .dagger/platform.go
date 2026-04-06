@@ -11,8 +11,8 @@ func (m *Srwc) base(os string) *dagger.Container {
 		return dag.Container().
 			From("archlinux:latest").
 			WithExec([]string{"pacman", "-Syu", "--noconfirm"}).
-			WithExec([]string{"pacman", "-S", "--noconfirm",
-				"pkgconf", "binutils", "gcc", "make", "git", "rust", "clang",
+			WithExec([]string{"pacman", "-S", "--needed", "--noconfirm",
+				"pkgconf", "binutils", "gcc", "make", "git", "rust", "clang", "upx",
 				"libdisplay-info", "libinput", "wayland", "libxkbcommon",
 				"pixman", "libx11", "libxcursor", "libxrandr", "libxi",
 				"libxcb", "mesa", "libglvnd", "seatd", "libdrm", "libpipewire",
@@ -22,7 +22,7 @@ func (m *Srwc) base(os string) *dagger.Container {
 		return dag.Container().
 			From("fedora:latest").
 			WithExec([]string{"dnf", "install", "-y",
-				"pkgconf-pkg-config", "gcc", "gcc-c++", "git", "rust", "cargo",
+				"pkgconf-pkg-config", "gcc", "gcc-c++", "git", "rust", "cargo", "upx",
 				"libdisplay-info-devel", "libinput-devel", "wayland-devel",
 				"libxkbcommon-devel", "pixman-devel", "libX11-devel",
 				"libXcursor-devel", "libXrandr-devel", "libXi-devel",
@@ -36,7 +36,7 @@ func (m *Srwc) base(os string) *dagger.Container {
 			WithEnvVariable("DEBIAN_FRONTEND", "noninteractive").
 			WithExec([]string{"apt-get", "update"}).
 			WithExec([]string{"apt-get", "install", "-y",
-				"pkg-config", "git", "libseat-dev", "libdisplay-info-dev",
+				"pkg-config", "git", "libseat-dev", "libdisplay-info-dev", "upx-ucl",
 				"libinput-dev", "libudev-dev", "libgbm-dev", "libxkbcommon-dev",
 				"libwayland-dev", "libdrm-dev", "libpixman-1-dev", "libx11-dev",
 				"libxcursor-dev", "libxrandr-dev", "libxi-dev", "libxcb1-dev", "libgl-dev",

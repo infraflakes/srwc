@@ -62,13 +62,17 @@ pub fn spawn_xwayland(
                 std::env::set_var("DISPLAY", format!(":{display_number}"));
             }
             // Export DISPLAY to systemd/D-Bus so D-Bus-activated X11 apps can find XWayland
+            let cmd = if data.has_systemd {
+                "systemctl --user import-environment DISPLAY; \
+                 hash dbus-update-activation-environment 2>/dev/null && \
+                 dbus-update-activation-environment DISPLAY"
+            } else {
+                "hash dbus-update-activation-environment 2>/dev/null && \
+                 dbus-update-activation-environment DISPLAY"
+            };
+
             if let Err(e) = std::process::Command::new("/bin/sh")
-                .args([
-                    "-c",
-                    "systemctl --user import-environment DISPLAY; \
-                     hash dbus-update-activation-environment 2>/dev/null && \
-                     dbus-update-activation-environment DISPLAY",
-                ])
+                .args(["-c", cmd])
                 .spawn()
             {
                 tracing::warn!("Failed to export DISPLAY: {e}");

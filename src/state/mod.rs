@@ -511,6 +511,7 @@ pub struct Srwc {
         Option<Arc<Mutex<HashMap<String, crate::dbus::mutter_screen_cast::OutputInfo>>>>,
     pub conn_display_config: Option<zbus::blocking::Connection>,
     pub conn_introspect: Option<zbus::blocking::Connection>,
+    pub has_systemd: bool,
 }
 
 /// Per-client state stored by wayland-server for each connected client.
@@ -718,6 +719,7 @@ impl Srwc {
             screencasting: None,
             conn_screen_cast: None,
             gbm_device: None,
+            has_systemd: false,
         }
     }
 

@@ -215,11 +215,16 @@ pub fn init_winit(
             };
 
             // --- Build cursor + compose frame ---
+            let (cursor_cam, cursor_zoom) = if data.screenshot_ui.is_open() {
+                (Point::from((0.0, 0.0)), 1.0)
+            } else {
+                (cur_camera, cur_zoom)
+            };
             let cursor_elements = build_cursor_elements(
                 data,
                 backend.renderer(),
-                cur_camera,
-                cur_zoom,
+                cursor_cam,
+                cursor_zoom,
                 output.current_scale().fractional_scale(),
                 1.0,
             );

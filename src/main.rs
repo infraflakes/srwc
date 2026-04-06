@@ -16,6 +16,15 @@ use smithay::wayland::shell::xdg::XdgToplevelSurfaceData;
 use state::{ClientState, Srwc};
 use std::sync::Arc;
 
+fn has_systemctl() -> bool {
+    std::process::Command::new("systemctl")
+        .arg("--version")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging (RUST_LOG=info by default)
     if std::env::var("RUST_LOG").is_err() {
@@ -255,17 +264,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "srwc") };
 
     let is_session = backend_name == "udev";
-    if is_session {
-        // Start graphical-session-pre.target
+    let has_systemd = is_session && has_systemctl();
+    data.has_systemd = has_systemd;
+
+    if has_systemd {
+        // systemd-specific: start graphical-session targets via transient anchor
         let _ = std::process::Command::new("systemctl")
             .args(["--user", "start", "graphical-session-pre.target"])
             .status();
 
-        // Create a transient anchor service that keeps graphical-session.target alive.
-        // BindsTo= means this service requires the target, so:
-        //   1. Starting this service also starts graphical-session.target
-        //   2. The target stays alive because this service "needs" it (StopWhenUnneeded won't trigger)
-        // --remain-after-exit keeps the service in "active" state after /bin/true exits.
         let _ = std::process::Command::new("systemd-run")
             .args([
                 "--user",
@@ -277,13 +284,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ])
             .status();
 
-        // Import full environment AFTER targets are alive, so D-Bus-activated
-        // services find graphical-session.target active.
+        // Import specific session vars to systemd
         let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
         let cmd = format!(
             "systemctl --user import-environment {session_vars}; \
-     hash dbus-update-activation-environment 2>/dev/null && \
-     dbus-update-activation-environment {session_vars}"
+             hash dbus-update-activation-environment 2>/dev/null && \
+             dbus-update-activation-environment {session_vars}"
         );
         match std::process::Command::new("/bin/sh")
             .args(["-c", &cmd])
@@ -294,6 +300,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => tracing::warn!("Failed to import session environment: {e}"),
         }
+    } else if is_session {
+        // Non-systemd: only update D-Bus activation environment
+        let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
+        let cmd = format!(
+            "hash dbus-update-activation-environment 2>/dev/null && \
+             dbus-update-activation-environment {session_vars}"
+        );
+        match std::process::Command::new("/bin/sh")
+            .args(["-c", &cmd])
+            .spawn()
+        {
+            Ok(mut child) => {
+                let _ = child.wait();
+            }
+            Err(e) => tracing::warn!("Failed to import session environment: {e}"),
+        }
+        tracing::info!("systemd not found, skipping graphical-session target setup");
     }
 
     event_loop
@@ -380,15 +403,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Save camera state on exit (fallback for non-Quit exits)
     data.save_cameras();
 
-    if is_session {
-        // Stop the transient anchor service. This releases graphical-session.target,
-        // which then deactivates (StopWhenUnneeded=yes), cascading to stop portal
-        // services and other dependents.
+    if has_systemd {
         let _ = std::process::Command::new("systemctl")
             .args(["--user", "stop", "srwc-session.service"])
             .status();
         let _ = std::process::Command::new("systemctl")
             .args(["--user", "unset-environment", "WAYLAND_DISPLAY", "DISPLAY"])
+            .status();
+    } else if is_session {
+        // Non-systemd teardown: just clean up D-Bus env if possible
+        let _ = std::process::Command::new("/bin/sh")
+            .args([
+                "-c",
+                "hash dbus-update-activation-environment 2>/dev/null && \
+                 dbus-update-activation-environment WAYLAND_DISPLAY= DISPLAY=",
+            ])
             .status();
     }
 

@@ -1050,7 +1050,7 @@ fn render_frame(
     } else {
         data.config.inactive_cursor_opacity as f32
     };
-    let (cursor_cam, _cursor_zoom) = if data.screenshot_ui.is_open() {
+    let (cursor_cam, cursor_zoom) = if data.screenshot_ui.is_open() {
         (Point::from((0.0, 0.0)), 1.0)
     } else {
         (cur_camera, cur_zoom)
@@ -1059,7 +1059,7 @@ fn render_frame(
         data,
         renderer,
         cursor_cam,
-        cur_zoom,
+        cursor_zoom, // was: cur_zoom
         output.current_scale().fractional_scale(),
         cursor_alpha,
     );
