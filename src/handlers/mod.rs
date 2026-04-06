@@ -10,10 +10,11 @@ use smithay::wayland::shell::xdg::dialog::XdgDialogHandler;
 use smithay::{
     backend::renderer::ImportDma,
     delegate_cursor_shape, delegate_data_control, delegate_data_device, delegate_dmabuf,
-    delegate_fractional_scale, delegate_idle_inhibit, delegate_keyboard_shortcuts_inhibit,
-    delegate_output, delegate_pointer_constraints, delegate_pointer_gestures,
-    delegate_presentation, delegate_primary_selection, delegate_relative_pointer, delegate_seat,
-    delegate_single_pixel_buffer, delegate_viewporter, delegate_xdg_activation,
+    delegate_ext_data_control, delegate_fractional_scale, delegate_idle_inhibit,
+    delegate_keyboard_shortcuts_inhibit, delegate_output, delegate_pointer_constraints,
+    delegate_pointer_gestures, delegate_presentation, delegate_primary_selection,
+    delegate_relative_pointer, delegate_seat, delegate_single_pixel_buffer, delegate_viewporter,
+    delegate_xdg_activation,
     input::{
         Seat, SeatHandler, SeatState, keyboard,
         pointer::{CursorIcon, CursorImageStatus, PointerHandle},
@@ -35,6 +36,10 @@ use smithay::{
             SelectionHandler,
             data_device::{
                 DataDeviceHandler, DataDeviceState, WaylandDndGrabHandler, set_data_device_focus,
+            },
+            ext_data_control::{
+                DataControlHandler as ExtDataControlHandler,
+                DataControlState as ExtDataControlState,
             },
             primary_selection::{
                 PrimarySelectionHandler, PrimarySelectionState, set_primary_focus,
@@ -249,6 +254,14 @@ impl DataControlHandler for Srwc {
 }
 
 delegate_data_control!(Srwc);
+
+impl ExtDataControlHandler for Srwc {
+    fn data_control_state(&mut self) -> &mut ExtDataControlState {
+        &mut self.ext_data_control_state
+    }
+}
+
+delegate_ext_data_control!(Srwc);
 
 impl PointerConstraintsHandler for Srwc {
     fn new_constraint(&mut self, _surface: &WlSurface, _pointer: &PointerHandle<Self>) {

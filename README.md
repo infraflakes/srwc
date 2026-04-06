@@ -11,7 +11,7 @@ Traditional window managers arrange windows to fit your screen, but on `srwc` wi
 
 ## Lineage
 
-srwc is a fork of [driftwm](https://github.com/malbiruk/driftwm), which introduced optimizations, text-input-v3 protocol, screen casting via GNOME portal, built-in screenshot utility, and more.
+srwc is a fork of [driftwm](https://github.com/malbiruk/driftwm), which introduced optimizations, text-input-v3 protocol, screen casting via GNOME portal, built-in screenshot utility, ext_data_control_v1 protocol, and more.
 
 ## Installation
 

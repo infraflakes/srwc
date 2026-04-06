@@ -8,7 +8,7 @@ mod navigation;
 mod render_cache;
 pub use cursor::{CursorFrames, CursorState};
 pub use render_cache::RenderCache;
-
+use smithay::wayland::selection::ext_data_control::DataControlState as ExtDataControlState;
 use smithay::{
     desktop::{PopupManager, Space, Window},
     input::{Seat, SeatState, keyboard::XkbConfig},
@@ -403,6 +403,7 @@ pub struct Srwc {
     pub xdg_activation_state: XdgActivationState,
     pub primary_selection_state: PrimarySelectionState,
     pub data_control_state: DataControlState,
+    pub ext_data_control_state: ExtDataControlState,
     #[allow(dead_code)]
     pub pointer_constraints_state: PointerConstraintsState,
     #[allow(dead_code)]
@@ -550,6 +551,8 @@ impl Srwc {
         let primary_selection_state = PrimarySelectionState::new::<Self>(&dh);
         let data_control_state =
             DataControlState::new::<Self, _>(&dh, Some(&primary_selection_state), |_| true);
+        let ext_data_control_state =
+            ExtDataControlState::new::<Self, _>(&dh, Some(&primary_selection_state), |_| true);
         let pointer_constraints_state = PointerConstraintsState::new::<Self>(&dh);
         let relative_pointer_state = RelativePointerManagerState::new::<Self>(&dh);
         let _pointer_gestures_state = PointerGesturesState::new::<Self>(&dh);
@@ -648,6 +651,7 @@ impl Srwc {
             xdg_activation_state,
             primary_selection_state,
             data_control_state,
+            ext_data_control_state,
             pointer_constraints_state,
             relative_pointer_state,
             keyboard_shortcuts_inhibit_state,
