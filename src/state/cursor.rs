@@ -1,3 +1,6 @@
+/// Fallback left_ptr cursor (64x64 RGBA) for when no xcursor theme is found.  
+static FALLBACK_CURSOR_DATA: &[u8] = include_bytes!("../../resources/cursor.rgba");
+
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -60,9 +63,33 @@ impl CursorState {
         if !self.cursor_buffers.contains_key(name) {
             let theme_name = std::env::var("XCURSOR_THEME").unwrap_or_else(|_| "default".into());
             let theme = xcursor::CursorTheme::load(&theme_name);
-            let path = theme.load_icon(name)?;
-            let data = std::fs::read(path).ok()?;
-            let images = xcursor::parser::parse_xcursor(&data)?;
+            let path = theme.load_icon(name);
+
+            let images = path
+                .and_then(|p| std::fs::read(p).ok())
+                .and_then(|data| xcursor::parser::parse_xcursor(&data));
+
+            let images = match images {
+                Some(imgs) => imgs,
+                None => {
+                    // Only provide fallback for "default" cursor
+                    if name == "default" {
+                        tracing::warn!("xcursor theme not found, using embedded fallback cursor");
+                        vec![xcursor::parser::Image {
+                            size: 32,
+                            width: 64,
+                            height: 64,
+                            xhot: 1,
+                            yhot: 1,
+                            delay: 0,
+                            pixels_rgba: Vec::from(FALLBACK_CURSOR_DATA),
+                            pixels_argb: vec![],
+                        }]
+                    } else {
+                        return None;
+                    }
+                }
+            };
 
             let target_size = std::env::var("XCURSOR_SIZE")
                 .ok()

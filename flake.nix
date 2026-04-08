@@ -13,11 +13,16 @@
     pkgs = nixpkgs.legacyPackages.${system};
 
     nativeBuildInputs = with pkgs; [
+      cargo
+      clippy
+      rustfmt
       pkg-config
+      pkgs.makeWrapper
       rustPlatform.bindgenHook
     ];
 
     buildInputs = with pkgs; [
+      adwaita-icon-theme
       wayland
       wayland-protocols
       seatd
@@ -90,6 +95,8 @@
 
       postFixup = ''
         patchelf --add-rpath "${pkgs.lib.makeLibraryPath runtimeLibs}" $out/bin/srwc
+        wrapProgram $out/bin/srwc \
+          --prefix XCURSOR_PATH : "${pkgs.adwaita-icon-theme}/share/icons"
       '';
 
       postInstall = ''

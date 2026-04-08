@@ -280,7 +280,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "--property=BindsTo=graphical-session.target",
                 "--property=After=graphical-session-pre.target",
                 "--remain-after-exit",
-                "/bin/true",
+                "true",
             ])
             .status();
 
