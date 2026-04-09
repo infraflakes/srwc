@@ -1332,7 +1332,11 @@ impl Srwc {
             let theme_ok = if theme_changed {
                 if let Some(ref theme_name) = new_config.cursor_theme {
                     self.cursor.cursor_buffers.clear();
-                    if self.cursor.load_xcursor("default", Some(theme_name)).is_some() {
+                    if self
+                        .cursor
+                        .load_xcursor("default", Some(theme_name))
+                        .is_some()
+                    {
                         unsafe { std::env::set_var("XCURSOR_THEME", theme_name) };
                         true
                     } else {
@@ -1392,7 +1396,11 @@ impl Srwc {
         tracing::info!("Config reloaded");
     }
 
-    pub fn load_xcursor(&mut self, name: &str, theme_override: Option<&str>) -> Option<&CursorFrames> {
+    pub fn load_xcursor(
+        &mut self,
+        name: &str,
+        theme_override: Option<&str>,
+    ) -> Option<&CursorFrames> {
         self.cursor.load_xcursor(name, theme_override)
     }
 
