@@ -16,6 +16,7 @@
       cargo
       clippy
       rustfmt
+      cargo-edit
       pkg-config
       pkgs.makeWrapper
       rustPlatform.bindgenHook

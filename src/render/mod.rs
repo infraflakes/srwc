@@ -501,8 +501,10 @@ fn build_xcursor_elements(
     name: &'static str,
     alpha: f32,
 ) -> Vec<OutputRenderElements> {
-    let loaded = state.load_xcursor(name).is_some();
-    if !loaded && state.load_xcursor("default").is_none() {
+    let theme = state.config.cursor_theme.clone();
+    let theme_deref = theme.as_deref();
+    let loaded = state.load_xcursor(name, theme_deref).is_some();
+    if !loaded && state.load_xcursor("default", theme_deref).is_none() {
         return vec![];
     }
     let key = if loaded { name } else { "default" };

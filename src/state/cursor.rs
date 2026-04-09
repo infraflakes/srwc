@@ -59,9 +59,15 @@ impl CursorState {
 
     /// Load all xcursor animation frames by name and cache them.
     /// Returns a reference to the cached `CursorFrames`.
-    pub fn load_xcursor(&mut self, name: &str) -> Option<&CursorFrames> {
+    pub fn load_xcursor(
+        &mut self,
+        name: &str,
+        theme_override: Option<&str>,
+    ) -> Option<&CursorFrames> {
         if !self.cursor_buffers.contains_key(name) {
-            let theme_name = std::env::var("XCURSOR_THEME").unwrap_or_else(|_| "default".into());
+            let theme_name = theme_override.map(|s| s.to_string()).unwrap_or_else(|| {
+                std::env::var("XCURSOR_THEME").unwrap_or_else(|_| "default".into())
+            });
 
             // search XCURSOR_PATH directories
             let path = std::env::var("XCURSOR_PATH")

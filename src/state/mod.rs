@@ -1331,8 +1331,8 @@ impl Srwc {
         if theme_changed || size_changed {
             let theme_ok = if theme_changed {
                 if let Some(ref theme_name) = new_config.cursor_theme {
-                    let theme = xcursor::CursorTheme::load(theme_name);
-                    if theme.load_icon("default").is_some() {
+                    self.cursor.cursor_buffers.clear();
+                    if self.cursor.load_xcursor("default", Some(theme_name)).is_some() {
                         unsafe { std::env::set_var("XCURSOR_THEME", theme_name) };
                         true
                     } else {
@@ -1392,8 +1392,8 @@ impl Srwc {
         tracing::info!("Config reloaded");
     }
 
-    pub fn load_xcursor(&mut self, name: &str) -> Option<&CursorFrames> {
-        self.cursor.load_xcursor(name)
+    pub fn load_xcursor(&mut self, name: &str, theme_override: Option<&str>) -> Option<&CursorFrames> {
+        self.cursor.load_xcursor(name, theme_override)
     }
 
     pub fn confirm_screenshot(&mut self, write_to_disk: bool) {
