@@ -353,6 +353,12 @@ pub struct SessionContext {
     pub input_devices: Vec<smithay::reexports::input::Device>,
 }
 
+#[derive(Debug)]
+pub struct DndIcon {
+    pub surface: smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
+    pub offset: Point<i32, Logical>,
+}
+
 /// Central compositor state.
 pub struct Srwc {
     // -- global: infrastructure --
@@ -376,6 +382,7 @@ pub struct Srwc {
 
     // -- global: input --
     pub seat: Seat<Srwc>,
+    pub dnd_icon: Option<DndIcon>,
 
     // -- global: cursor --
     pub cursor: CursorState,
@@ -639,6 +646,7 @@ impl Srwc {
             seat_state,
             data_device_state,
             seat,
+            dnd_icon: None,
             cursor: CursorState::new(),
             backend: None,
             decorations: HashMap::new(),

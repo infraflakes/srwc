@@ -4,7 +4,7 @@ pub mod xdg_shell;
 pub mod xwayland;
 
 use crate::state::{FocusTarget, Srwc};
-use smithay::input::dnd::DndGrabHandler;
+use smithay::input::dnd::{DnDGrab, DndGrabHandler};
 use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::xdg::dialog::XdgDialogHandler;
 use smithay::{
@@ -122,8 +122,51 @@ impl DataDeviceHandler for Srwc {
     }
 }
 
-impl DndGrabHandler for Srwc {}
-impl WaylandDndGrabHandler for Srwc {}
+impl DndGrabHandler for Srwc {
+    fn dropped(
+        &mut self,
+        _target: Option<smithay::input::dnd::DndTarget<'_, Self>>,
+        _validated: bool,
+        _seat: Seat<Self>,
+        _location: Point<f64, Logical>,
+    ) {
+        self.dnd_icon = None;
+        self.mark_all_dirty();
+    }
+}
+
+impl WaylandDndGrabHandler for Srwc {
+    fn dnd_requested<S: smithay::input::dnd::Source>(
+        &mut self,
+        source: S,
+        icon: Option<WlSurface>,
+        seat: Seat<Self>,
+        serial: smithay::utils::Serial,
+        type_: smithay::input::dnd::GrabType,
+    ) {
+        self.dnd_icon = icon.map(|surface| crate::state::DndIcon {
+            surface,
+            offset: Point::new(0, 0),
+        });
+
+        match type_ {
+            smithay::input::dnd::GrabType::Pointer => {
+                let pointer = seat.get_pointer().unwrap();
+                let start_data = pointer.grab_start_data().unwrap();
+                let grab = DnDGrab::new_pointer(&self.display_handle, start_data, source, seat);
+                pointer.set_grab(self, grab, serial, smithay::input::pointer::Focus::Keep);
+            }
+            smithay::input::dnd::GrabType::Touch => {
+                let touch = seat.get_touch().unwrap();
+                let start_data = touch.grab_start_data().unwrap();
+                let grab = DnDGrab::new_touch(&self.display_handle, start_data, source, seat);
+                touch.set_grab(self, grab, serial);
+            }
+        }
+
+        self.mark_all_dirty();
+    }
+}
 
 delegate_data_device!(Srwc);
 
