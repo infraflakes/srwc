@@ -15,6 +15,32 @@ srwc is a fork of [driftwm](https://github.com/malbiruk/driftwm), which introduc
 
 ## Installation
 
+### NixOS
+
+Add the `srwc` flake:
+
+```nix
+inputs = {
+  nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  srwc = {
+      url = "github:infraflakes/srwc";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+};
+```
+
+In your `configuration.nix`:
+
+```nix
+{ inputs, ... }: {
+  imports = [
+    inputs.srwc.nixosModules.default
+  ];
+
+  programs.srwc.enable = true;
+}
+```
+
 ### CLI install
 
 srwc embeds all required session artifacts in the binary:
