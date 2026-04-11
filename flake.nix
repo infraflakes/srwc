@@ -130,10 +130,12 @@
           rustfmt
           cargo-edit
           rustc
+          seatd.dev
+          udev.dev
           dagger.packages.${stdenv.hostPlatform.system}.dagger
         ]);
 
-      inherit runtimeLibs;
+      inherit nativeBuildInputs runtimeLibs;
       LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath runtimeLibs;
     };
   };
