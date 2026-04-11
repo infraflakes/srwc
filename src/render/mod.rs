@@ -454,7 +454,7 @@ pub fn build_cursor_elements(
 
     // Separate the status check from mutable state access (Rust 2024 borrow rules)
     let status = state.cursor.cursor_status.clone();
-    match status {
+    let mut elements = match status {
         CursorImageStatus::Hidden => vec![],
         CursorImageStatus::Surface(ref surface) => {
             if !surface.alive() {
@@ -490,7 +490,32 @@ pub fn build_cursor_elements(
         CursorImageStatus::Named(icon) => {
             build_xcursor_elements(state, renderer, physical_pos, icon.name(), alpha)
         }
+    };
+
+    // Render DnD icon if active
+    if let Some(dnd_icon) = state.dnd_icon.as_ref()
+        && dnd_icon.surface.alive()
+    {
+        let icon_pos = screen_pos + dnd_icon.offset.to_f64();
+        let physical_icon_pos: Point<i32, Physical> = icon_pos.to_physical_precise_round(scale);
+
+        let dnd_elems: Vec<WaylandSurfaceRenderElement<GlesRenderer>> =
+            smithay::backend::renderer::element::surface::render_elements_from_surface_tree(
+                renderer,
+                &dnd_icon.surface,
+                physical_icon_pos,
+                Scale::from(1.0),
+                alpha,
+                Kind::Unspecified,
+            );
+        elements.extend(
+            dnd_elems
+                .into_iter()
+                .map(|e| OutputRenderElements::CursorSurface(e.into())),
+        );
     }
+
+    elements
 }
 
 /// Build xcursor memory buffer elements for a named cursor icon.
@@ -1329,6 +1354,19 @@ pub fn post_render(state: &mut crate::state::Srwc, output: &Output) {
     if let CursorImageStatus::Surface(ref surface) = state.cursor.cursor_status {
         smithay::desktop::utils::send_frames_surface_tree(
             surface,
+            output,
+            time,
+            Some(Duration::ZERO),
+            |_, _| Some(output.clone()),
+        );
+    }
+
+    // DnD icon surface frame callbacks
+    if let Some(ref dnd_icon) = state.dnd_icon
+        && dnd_icon.surface.alive()
+    {
+        smithay::desktop::utils::send_frames_surface_tree(
+            &dnd_icon.surface,
             output,
             time,
             Some(Duration::ZERO),

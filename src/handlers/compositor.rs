@@ -75,6 +75,33 @@ impl CompositorHandler for Srwc {
     ) {
         self.mark_all_dirty();
 
+        // Handle DnD icon surface commits — update offset from buffer_delta
+        let is_dnd_icon = if let Some(ref dnd_icon) = self.dnd_icon {
+            let root = {
+                let mut root = surface.clone();
+                while let Some(parent) = get_parent(&root) {
+                    root = parent;
+                }
+                root
+            };
+            dnd_icon.surface == root
+        } else {
+            false
+        };
+
+        if is_dnd_icon && surface == &self.dnd_icon.as_ref().unwrap().surface {
+            with_states(surface, |states| {
+                let buffer_delta = states
+                    .cached_state
+                    .get::<SurfaceAttributes>()
+                    .current()
+                    .buffer_delta
+                    .take()
+                    .unwrap_or_default();
+                self.dnd_icon.as_mut().unwrap().offset += buffer_delta;
+            });
+        }
+
         // Bump blur scene generation for scene-affecting surfaces (skip cursor)
         let is_cursor = matches!(
             &self.cursor.cursor_status,
@@ -132,6 +159,13 @@ impl CompositorHandler for Srwc {
             if ok {
                 add_blocker(surface, blocker);
             }
+        }
+
+        // Handle DnD icon surface commits — call buffer handler and return early
+        // This MUST come after the DMA-BUF blocker above to avoid torn frames
+        if is_dnd_icon {
+            smithay::backend::renderer::utils::on_commit_buffer_handler::<Srwc>(surface);
+            return;
         }
 
         // Trim corners from CSD toplevels' opaque regions so the background renders
