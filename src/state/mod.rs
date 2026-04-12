@@ -491,7 +491,7 @@ pub struct Srwc {
     pub screenshot_ui: ScreenshotUi,
     pub pending_screenshot: bool,
     pub pending_screenshot_screen: bool,
-    pub pending_screenshot_confirm: Option<bool>,
+    pub pending_screenshot_confirm: bool,
 
     pub last_titlebar_click: Option<(
         Instant,
@@ -712,7 +712,7 @@ impl Srwc {
             screenshot_ui: ScreenshotUi::new(),
             pending_screenshot: false,
             pending_screenshot_screen: false,
-            pending_screenshot_confirm: None,
+            pending_screenshot_confirm: false,
             last_titlebar_click: None,
             screencasting: None,
             conn_screen_cast: None,
@@ -1402,29 +1402,24 @@ impl Srwc {
         self.cursor.load_xcursor(name, theme_override)
     }
 
-    pub fn confirm_screenshot(&mut self, write_to_disk: bool) {
+    pub fn confirm_screenshot(&mut self) {
         if !self.screenshot_ui.is_open() {
             return;
         }
-        self.pending_screenshot_confirm = Some(write_to_disk);
+        self.pending_screenshot_confirm = true;
     }
 
-    pub fn save_screenshot(
-        &mut self,
-        size: Size<i32, Physical>,
-        pixels: &[u8],
-        write_to_disk: bool,
-    ) {
+    pub fn save_screenshot(&mut self, size: Size<i32, Physical>, pixels: &[u8]) {
         let pixels = pixels.to_vec();
         let size_w = size.w as u32;
         let size_h = size.h as u32;
 
         // Set up calloop channel for clipboard
         let (tx, rx) = calloop::channel::sync_channel::<std::sync::Arc<[u8]>>(1);
-        let clipboard_active = self
+        if self
             .loop_handle
-            .insert_source(rx, |event, _, state| {
-                if let calloop::channel::Event::Msg(buf) = event {
+            .insert_source(rx, |event, _, state| match event {
+                calloop::channel::Event::Msg(buf) => {
                     set_data_device_selection(
                         &state.display_handle,
                         &state.seat,
@@ -1432,55 +1427,56 @@ impl Srwc {
                         buf,
                     );
                 }
+                calloop::channel::Event::Closed => {}
             })
-            .map_err(|e| tracing::error!("Failed to register screenshot clipboard source: {e}"))
-            .is_ok();
+            .is_err()
+        {
+            tracing::error!("Failed to register screenshot clipboard source");
+        }
 
-        // Compute screenshot path for disk write
-        let write_path = if write_to_disk {
-            dirs::picture_dir().map(|dir| {
-                let screenshots_dir = dir.join("Screenshots");
-                let _ = std::fs::create_dir_all(&screenshots_dir);
-                let now = chrono::Local::now();
-                screenshots_dir.join(format!(
-                    "screenshot-{}.png",
-                    now.format("%Y-%m-%d-%H-%M-%S")
-                ))
-            })
-        } else {
-            None
-        };
+        // Compute screenshot path for disk write (always save to disk)
+        let write_path = dirs::picture_dir().map(|dir| {
+            let screenshots_dir = dir.join("Screenshots");
+            let _ = std::fs::create_dir_all(&screenshots_dir);
+            let now = chrono::Local::now();
+            screenshots_dir.join(format!(
+                "screenshot-{}.png",
+                now.format("%Y-%m-%d-%H-%M-%S")
+            ))
+        });
 
         // Encode + set clipboard in background thread
         std::thread::spawn(move || {
             let mut png_data = Vec::new();
-            {
+            let encoded = {
                 let mut encoder = png::Encoder::new(&mut png_data, size_w, size_h);
                 encoder.set_color(png::ColorType::Rgba);
                 encoder.set_depth(png::BitDepth::Eight);
-                if let Ok(mut writer) = encoder.write_header() {
-                    let _ = writer.write_image_data(&pixels);
-                }
-            }
-            let buf: std::sync::Arc<[u8]> = std::sync::Arc::from(png_data.into_boxed_slice());
-            if clipboard_active {
+                encoder
+                    .write_header()
+                    .and_then(|mut w| w.write_image_data(&pixels))
+            };
+            if encoded.is_ok() {
+                let buf: std::sync::Arc<[u8]> = std::sync::Arc::from(png_data.into_boxed_slice());
                 let _ = tx.send(buf.clone());
-            }
 
-            if let Some(path) = write_path
-                && std::fs::write(&path, &*buf).is_ok()
-            {
-                tracing::info!("Screenshot saved to {:?}", path);
-                let _ = std::process::Command::new("notify-send")
-                    .args([
-                        "-a",
-                        "srwc",
-                        "-i",
-                        "camera",
-                        "Screenshot Saved",
-                        path.to_str().unwrap_or(""),
-                    ])
-                    .spawn();
+                if let Some(path) = write_path
+                    && std::fs::write(&path, &*buf).is_ok()
+                {
+                    tracing::info!("Screenshot saved to {:?}", path);
+                    let _ = std::process::Command::new("notify-send")
+                        .args([
+                            "-a",
+                            "srwc",
+                            "-i",
+                            "camera",
+                            "Screenshot Saved",
+                            path.to_str().unwrap_or(""),
+                        ])
+                        .spawn();
+                }
+            } else {
+                tracing::error!("PNG encoding failed; screenshot not saved or placed in clipboard");
             }
         });
     }
