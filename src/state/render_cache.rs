@@ -25,6 +25,7 @@ pub struct RenderCache {
     pub capture_state: HashMap<String, CaptureOutputState>,
     pub tile_shader: Option<GlesTexProgram>,
     pub cached_tile_bg: HashMap<String, crate::render::TileShaderElement>,
+    pub cached_wallpaper: HashMap<String, GlesTexture>,
 }
 
 impl RenderCache {
@@ -46,6 +47,7 @@ impl RenderCache {
             capture_state: HashMap::new(),
             tile_shader: None,
             cached_tile_bg: HashMap::new(),
+            cached_wallpaper: HashMap::new(),
         }
     }
 

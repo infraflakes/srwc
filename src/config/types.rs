@@ -530,6 +530,8 @@ pub struct BackgroundConfig {
     pub shader_path: Option<String>,
     /// Path to a tile image (PNG/JPG). If set, image is tiled across the canvas.
     pub tile_path: Option<String>,
+    /// Path to a static wallpaper image (PNG/JPG). If set, image is rendered fullscreen (not tiled, not zoomed).
+    pub wallpaper_path: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -134,6 +134,7 @@ pub(super) struct OutputOutlineConfig {
 pub(super) struct BackgroundFileConfig {
     pub shader_path: Option<String>,
     pub tile_path: Option<String>,
+    pub wallpaper_path: Option<String>,
 }
 
 #[derive(Deserialize, Default)]

@@ -4,8 +4,8 @@ use std::time::Duration;
 use smithay::{
     backend::renderer::{
         element::{
-            Element, Kind, RenderElement, memory::MemoryRenderBufferRenderElement, render_elements,
-            texture::TextureRenderElement, utils::RescaleRenderElement,
+            Element, Id, Kind, RenderElement, memory::MemoryRenderBufferRenderElement,
+            render_elements, texture::TextureRenderElement, utils::RescaleRenderElement,
         },
         gles::{
             GlesError, GlesFrame, GlesRenderer, GlesTexProgram, GlesTexture, Uniform, UniformName,
@@ -15,7 +15,7 @@ use smithay::{
     },
     input::pointer::{CursorImageStatus, CursorImageSurfaceData},
     output::Output,
-    utils::{Logical, Physical, Point, Rectangle, Scale},
+    utils::{Logical, Physical, Point, Rectangle, Scale, Transform},
 };
 
 use smithay::backend::renderer::element::AsRenderElements;
@@ -25,7 +25,7 @@ use smithay::wayland::shell::wlr_layer::Layer as WlrLayer;
 
 use smithay::backend::allocator::Fourcc;
 use smithay::backend::renderer::element::memory::MemoryRenderBuffer;
-use smithay::utils::{Size, Transform};
+use smithay::utils::Size;
 
 use smithay::reexports::wayland_server::Resource;
 use smithay::utils::IsAlive;
@@ -621,6 +621,7 @@ pub fn compose_frame(
     // Ensure this output has a background element (lazy init per output, and re-init after config reload)
     if !state.render.cached_bg_elements.contains_key(&output.name())
         && !state.render.cached_tile_bg.contains_key(&output.name())
+        && !state.render.cached_wallpaper.contains_key(&output.name())
     {
         let output_size = crate::state::output_logical_size(output);
         init_background(state, renderer, output_size, &output.name());
@@ -1061,7 +1062,25 @@ pub fn compose_frame(
         build_output_outline_elements(state, renderer, output, camera, zoom, viewport_size);
 
     let bg_elements: Vec<OutputRenderElements> =
-        if let Some(elem) = state.render.cached_bg_elements.get(&output.name()) {
+        // Wallpaper: static image, no zoom applied (rendered fullscreen fixed)
+        if let Some(tex) = state.render.cached_wallpaper.get(&output.name()) {
+            let output_size = crate::state::output_logical_size(output);
+            use smithay::backend::renderer::Renderer;
+            let elem = TextureRenderElement::from_static_texture(
+                Id::new(),
+                renderer.context_id(),
+                Point::from((0.0f64, 0.0f64)),
+                tex.clone(),
+                1,
+                Transform::Normal,
+                None,
+                None,
+                Some(Size::from((output_size.w, output_size.h))),
+                None,
+                Kind::Unspecified,
+            );
+            vec![OutputRenderElements::Blur(elem)]
+        } else if let Some(elem) = state.render.cached_bg_elements.get(&output.name()) {
             vec![OutputRenderElements::Background(
                 RescaleRenderElement::from_element(
                     elem.clone(),

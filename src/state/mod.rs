@@ -1322,6 +1322,7 @@ impl Srwc {
         self.render.cached_bg_elements.clear();
         self.render.tile_shader = None;
         self.render.cached_tile_bg.clear();
+        self.render.cached_wallpaper.clear();
 
         // Cursor theme/size — validate theme before committing
         let theme_changed = new_config.cursor_theme != self.config.cursor_theme;

@@ -218,8 +218,48 @@ pub fn init_background(
     initial_size: Size<i32, smithay::utils::Logical>,
     output_name: &str,
 ) {
+    // Static wallpaper: load image as plain GlesTexture (no shader needed)
+    // Priority: shader_path > wallpaper_path > tile_path > default
+    if state.config.background.shader_path.is_none()
+        && let Some(path) = state.config.background.wallpaper_path.as_deref()
+    {
+        match image::open(path) {
+            Ok(img) => {
+                let img = img.into_rgba8();
+                let (w, h) = img.dimensions();
+                let raw = img.into_raw();
+
+                use smithay::backend::renderer::ImportMem;
+                use smithay::utils::Buffer;
+                match renderer.import_memory(
+                    &raw,
+                    Fourcc::Abgr8888,
+                    Size::<i32, Buffer>::from((w as i32, h as i32)),
+                    false,
+                ) {
+                    Ok(texture) => {
+                        state
+                            .render
+                            .cached_wallpaper
+                            .insert(output_name.to_string(), texture);
+                        return;
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to upload wallpaper texture: {e}, falling back to tile"
+                        );
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to load wallpaper image {path}: {e}, falling back to tile");
+            }
+        }
+    }
+
     // Try loading tile image first (if configured and no shader_path)
     if state.config.background.shader_path.is_none()
+        && state.config.background.wallpaper_path.is_none()
         && let Some(path) = state.config.background.tile_path.as_deref()
     {
         match image::open(path) {
