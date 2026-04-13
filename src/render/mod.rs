@@ -1339,7 +1339,19 @@ pub fn post_render(state: &mut crate::state::Srwc, output: &Output) {
         let mut bbox = window.bbox();
         bbox.loc += loc - geom_loc;
         if !visible_rect.overlaps(bbox) {
-            continue;
+            let is_being_cast = state.screencasting.as_ref().is_some_and(|sc| {
+                window.wl_surface().is_some_and(|s| {
+                    let wl_id = u64::from(s.id().protocol_id());
+                    sc.casts.iter().any(|c| {
+                        c.is_active()
+                            && c.target
+                                == crate::screencasting::pw_utils::CastTarget::Window { id: wl_id }
+                    })
+                })
+            });
+            if !is_being_cast {
+                continue;
+            }
         }
         window.send_frame(output, time, Some(Duration::ZERO), |_, _| {
             Some(output.clone())
