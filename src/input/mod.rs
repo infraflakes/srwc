@@ -184,7 +184,7 @@ impl Srwc {
             time,
             |state, modifiers, handle| {
                 // If cycling is active and the cycle modifier was released, end cycle
-                if state.cycle_state.is_some()
+                if state.focus.cycle_index.is_some()
                     && !state.config.input.cycle_modifier.is_pressed(modifiers)
                 {
                     state.end_cycle();
@@ -195,8 +195,8 @@ impl Srwc {
                     let sym = handle.modified_sym();
 
                     // Intercept keys for screenshot UI
-                    if state.screenshot_ui.is_open() {
-                        if let Some(action) = state.screenshot_ui.action(sym, *modifiers) {
+                    if state.screenshot.ui.is_open() {
+                        if let Some(action) = state.screenshot.ui.action(sym, *modifiers) {
                             state.execute_action(&action);
                         }
                         return FilterResult::Intercept(None);
@@ -516,14 +516,14 @@ impl Srwc {
             .unwrap_or_default();
 
         // Intercept pointer motion for screenshot UI
-        if self.screenshot_ui.is_open() {
+        if self.screenshot.ui.is_open() {
             let serial = SERIAL_COUNTER.next_serial();
             let time = Event::time_msec(&event);
             if let Some(output) = self.active_output() {
                 let scale = output.current_scale().fractional_scale();
                 let pt: smithay::utils::Point<i32, smithay::utils::Physical> =
                     Point::from(((screen_pos.x * scale) as i32, (screen_pos.y * scale) as i32));
-                self.screenshot_ui.pointer_motion(pt, &output);
+                self.screenshot.ui.pointer_motion(pt, &output);
             }
             let pointer = self.pointer();
             pointer.motion(
@@ -579,7 +579,7 @@ impl Srwc {
     /// then to target output's canvas coords.
     fn on_pointer_motion_relative<I: InputBackend>(&mut self, event: I::PointerMotionEvent) {
         // Intercept pointer motion for screenshot UI
-        if self.screenshot_ui.is_open() {
+        if self.screenshot.ui.is_open() {
             let pointer = self.pointer();
             let old_pos = pointer.current_location();
             let delta = event.delta();
@@ -596,7 +596,7 @@ impl Srwc {
                 let scale = output.current_scale().fractional_scale();
                 let pt: smithay::utils::Point<i32, smithay::utils::Physical> =
                     Point::from(((new_pos.x * scale) as i32, (new_pos.y * scale) as i32));
-                self.screenshot_ui.pointer_motion(pt, &output);
+                self.screenshot.ui.pointer_motion(pt, &output);
             }
 
             let serial = SERIAL_COUNTER.next_serial();

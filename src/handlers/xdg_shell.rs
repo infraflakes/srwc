@@ -193,13 +193,13 @@ impl XdgShellHandler for Srwc {
                 self.update_output_from_camera();
             }
             // Remove from focus history before unmapping
-            self.focus_history.retain(|w| w != window);
+            self.focus.history.retain(|w| w != window);
             // Clamp or clear cycle index if cycling is active
-            if self.cycle_state.is_some() {
-                if self.focus_history.is_empty() {
-                    self.cycle_state = None;
-                } else if let Some(ref mut idx) = self.cycle_state {
-                    *idx = (*idx).min(self.focus_history.len() - 1);
+            if self.focus.cycle_index.is_some() {
+                if self.focus.history.is_empty() {
+                    self.focus.cycle_index = None;
+                } else if let Some(ref mut idx) = self.focus.cycle_index {
+                    *idx = (*idx).min(self.focus.history.len() - 1);
                 }
             }
             self.space.unmap_elem(window);

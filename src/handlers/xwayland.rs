@@ -153,7 +153,7 @@ impl XwmHandler for Srwc {
                 self.update_output_from_camera();
             }
 
-            self.focus_history.retain(|w| w != &smithay_window);
+            self.focus.history.retain(|w| w != &smithay_window);
             self.space.unmap_elem(&smithay_window);
         }
     }
@@ -424,8 +424,8 @@ impl XWaylandShellHandler for Srwc {
             self.navigate_to_window(&smithay_window, true);
         } else {
             // Widget: refocus previous window if this stole focus
-            self.focus_history.retain(|w| w != &smithay_window);
-            if let Some(prev) = self.focus_history.first().cloned() {
+            self.focus.history.retain(|w| w != &smithay_window);
+            if let Some(prev) = self.focus.history.first().cloned() {
                 let serial = SERIAL_COUNTER.next_serial();
                 let keyboard = self.keyboard();
                 let focus = prev.wl_surface().map(|s| FocusTarget(s.into_owned()));

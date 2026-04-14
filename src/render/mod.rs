@@ -615,9 +615,9 @@ pub fn compose_frame(
     }
 
     // Screenshot UI: if open, render the frozen screenshot and overlay rects
-    if state.screenshot_ui.is_open() {
+    if state.screenshot.ui.is_open() {
         let mut all = cursor_elements;
-        all.extend(state.screenshot_ui.render_output(renderer, output));
+        all.extend(state.screenshot.ui.render_output(renderer, output));
         return all;
     }
 
@@ -1348,7 +1348,7 @@ pub fn post_render(state: &mut crate::state::Srwc, output: &Output) {
             // N-output setups.
             let is_focused = state.focused_output.as_ref().is_some_and(|fo| fo == output);
             let is_being_cast = is_focused
-                && state.screencasting.as_ref().is_some_and(|sc| {
+                && state.screencast.screencasting.as_ref().is_some_and(|sc| {
                     window.wl_surface().is_some_and(|s| {
                         let wl_id = u64::from(s.id().protocol_id());
                         sc.casts

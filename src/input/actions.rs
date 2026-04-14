@@ -199,12 +199,12 @@ impl Srwc {
                 }
             }
             Action::CycleWindows { backward } => {
-                if self.focus_history.is_empty() {
+                if self.focus.history.is_empty() {
                     return;
                 }
 
-                let len = self.focus_history.len();
-                if let Some(ref mut idx) = self.cycle_state {
+                let len = self.focus.history.len();
+                if let Some(ref mut idx) = self.focus.cycle_index {
                     if *backward {
                         *idx = (*idx + len - 1) % len;
                     } else {
@@ -212,11 +212,11 @@ impl Srwc {
                     }
                 } else {
                     // First Tab press: jump to previous window (index 1)
-                    self.cycle_state = Some(1 % len);
+                    self.focus.cycle_index = Some(1 % len);
                 }
 
-                let idx = self.cycle_state.unwrap();
-                if let Some(window) = self.focus_history.get(idx).cloned() {
+                let idx = self.focus.cycle_index.unwrap();
+                if let Some(window) = self.focus.history.get(idx).cloned() {
                     self.navigate_to_window(&window, false);
                 }
             }
@@ -360,20 +360,20 @@ impl Srwc {
             Action::Screenshot => {
                 // Open interactive screenshot UI — capture happens in render loop
                 // where the renderer is available.
-                self.pending_screenshot = true;
+                self.screenshot.pending = true;
             }
             Action::ScreenshotScreen => {
-                self.pending_screenshot_screen = true;
+                self.screenshot.pending_screen = true;
             }
             Action::ConfirmScreenshot => {
                 self.confirm_screenshot();
             }
             Action::CancelScreenshot => {
                 self.restore_pointer_to_canvas();
-                self.screenshot_ui.close();
+                self.screenshot.ui.close();
             }
             Action::ScreenshotTogglePointer => {
-                self.screenshot_ui.toggle_pointer();
+                self.screenshot.ui.toggle_pointer();
             }
         }
     }

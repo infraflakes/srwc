@@ -371,8 +371,8 @@ impl CompositorHandler for Srwc {
                         }
 
                         if rule.widget {
-                            self.focus_history.retain(|w| w != &window);
-                            if let Some(prev) = self.focus_history.first().cloned() {
+                            self.focus.history.retain(|w| w != &window);
+                            if let Some(prev) = self.focus.history.first().cloned() {
                                 let serial = smithay::utils::SERIAL_COUNTER.next_serial();
                                 let keyboard = self.keyboard();
                                 let focus = prev.wl_surface().map(|s| FocusTarget(s.into_owned()));

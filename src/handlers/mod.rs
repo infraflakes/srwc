@@ -102,7 +102,7 @@ impl SeatHandler for Srwc {
         set_primary_focus(dh, seat, client);
 
         // Update focus history (skip during Alt-Tab cycling — history is frozen)
-        if self.cycle_state.is_none()
+        if self.focus.cycle_index.is_none()
             && let Some(focus) = focused
         {
             self.update_focus_history(&focus.0);
@@ -730,7 +730,7 @@ impl SessionLockHandler for Srwc {
         self.session_lock = SessionLock::Unlocked;
         self.lock_surfaces.clear();
         // Restore focus to the most recent window
-        if let Some(window) = self.focus_history.first().cloned() {
+        if let Some(window) = self.focus.history.first().cloned() {
             let serial = smithay::utils::SERIAL_COUNTER.next_serial();
             let keyboard = self.keyboard();
             let focus = window.wl_surface().map(|s| FocusTarget(s.into_owned()));

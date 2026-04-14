@@ -148,10 +148,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("failed to insert service channel source");
 
         let service_channel = dbus::mutter_service_channel::ServiceChannel::new(service_tx);
-        data.conn_service_channel = dbus::try_start(service_channel);
+        data.screencast.conn_service_channel = dbus::try_start(service_channel);
 
         // Initialize screencasting subsystem (creates the PipeWire calloop channel)
-        data.screencasting = Some(Screencasting::new(&event_loop.handle()));
+        data.screencast.screencasting = Some(Screencasting::new(&event_loop.handle()));
 
         // Create D-Bus calloop channel for ScreenCast messages
         let (to_srwc, from_screen_cast) = smithay::reexports::calloop::channel::channel();
@@ -167,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Build the output map for the D-Bus interface
         let ipc_outputs = Arc::new(Mutex::new(HashMap::new()));
-        data.ipc_outputs = Some(ipc_outputs.clone());
+        data.screencast.ipc_outputs = Some(ipc_outputs.clone());
 
         // Backfill outputs created during init_udev() before ipc_outputs was set.
         for output in data.space.outputs() {
@@ -189,11 +189,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Create and start the ScreenCast D-Bus service
         let screen_cast = dbus::ScreenCast::new(ipc_outputs.clone(), to_srwc);
-        data.conn_screen_cast = dbus::start_screen_cast(screen_cast);
+        data.screencast.conn_screen_cast = dbus::start_screen_cast(screen_cast);
 
         // DisplayConfig — shares the same ipc_outputs Arc as ScreenCast
         let display_config = dbus::mutter_display_config::DisplayConfig::new(ipc_outputs.clone());
-        data.conn_display_config = dbus::try_start(display_config);
+        data.screencast.conn_display_config = dbus::try_start(display_config);
 
         // Introspect — window list for the portal picker
         let (introspect_tx, introspect_rx) = calloop::channel::channel();
@@ -242,7 +242,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("failed to insert introspect source");
 
         let introspect = dbus::gnome_shell_introspect::Introspect::new(introspect_tx, from_srwc);
-        data.conn_introspect = dbus::try_start(introspect);
+        data.screencast.conn_introspect = dbus::try_start(introspect);
     }
 
     // Register the Wayland Display as a calloop source so client messages

@@ -215,7 +215,7 @@ pub fn init_winit(
             };
 
             // --- Build cursor + compose frame ---
-            let (cursor_cam, cursor_zoom) = if data.screenshot_ui.is_open() {
+            let (cursor_cam, cursor_zoom) = if data.screenshot.ui.is_open() {
                 (Point::from((0.0, 0.0)), 1.0)
             } else {
                 (cur_camera, cur_zoom)
@@ -245,10 +245,10 @@ pub fn init_winit(
                     }
 
                     // Check if a screenshot was requested
-                    if data.pending_screenshot || data.pending_screenshot_screen {
-                        let is_screen = data.pending_screenshot_screen;
-                        data.pending_screenshot = false;
-                        data.pending_screenshot_screen = false;
+                    if data.screenshot.pending || data.screenshot.pending_screen {
+                        let is_screen = data.screenshot.pending_screen;
+                        data.screenshot.pending = false;
+                        data.screenshot.pending_screen = false;
 
                         use smithay::backend::renderer::{Bind, Offscreen};
                         let buf_size = output_logical_size(&output)
@@ -324,22 +324,23 @@ pub fn init_winit(
                             #[allow(clippy::mutable_key_type)]
                             let mut screenshots = std::collections::HashMap::new();
                             screenshots.insert(output.clone(), (tw, two));
-                            data.screenshot_ui
+                            data.screenshot
+                                .ui
                                 .open(renderer, screenshots, default_output, false);
                             if is_screen {
-                                data.screenshot_ui.select_all();
-                                data.pending_screenshot_confirm = true;
+                                data.screenshot.ui.select_all();
+                                data.screenshot.pending_confirm = true;
                             }
                         }
                     }
 
-                    if data.pending_screenshot_confirm {
-                        data.pending_screenshot_confirm = false;
-                        if let Ok((size, pixels)) = data.screenshot_ui.capture(renderer) {
+                    if data.screenshot.pending_confirm {
+                        data.screenshot.pending_confirm = false;
+                        if let Ok((size, pixels)) = data.screenshot.ui.capture(renderer) {
                             data.save_screenshot(size, &pixels);
                         }
                         data.restore_pointer_to_canvas();
-                        data.screenshot_ui.close();
+                        data.screenshot.ui.close();
                     }
 
                     crate::render::render_screencopy(data, renderer, &output, &all_elements);

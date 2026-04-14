@@ -343,6 +343,24 @@ pub struct SessionContext {
     pub input_devices: Vec<smithay::reexports::input::Device>,
 }
 
+pub struct ScreenshotState {
+    pub ui: ScreenshotUi,
+    pub pending: bool,
+    pub pending_screen: bool,
+    pub pending_confirm: bool,
+}
+
+impl ScreenshotState {
+    pub fn new() -> Self {
+        Self {
+            ui: ScreenshotUi::new(),
+            pending: false,
+            pending_screen: false,
+            pending_confirm: false,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct DndIcon {
     pub surface: smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
@@ -441,8 +459,7 @@ pub struct Srwc {
     pub pending_size: HashSet<WlSurface>,
 
     // -- global: focus/navigation --
-    pub focus_history: Vec<Window>,
-    pub cycle_state: Option<usize>,
+    pub focus: FocusState,
 
     // -- global: key repeat --
     pub held_action: Option<(u32, srwc::config::Action, Instant)>,
@@ -488,10 +505,7 @@ pub struct Srwc {
 
     // -- global: SSD title bar double-click --
     // -- global: screenshot UI --
-    pub screenshot_ui: ScreenshotUi,
-    pub pending_screenshot: bool,
-    pub pending_screenshot_screen: bool,
-    pub pending_screenshot_confirm: bool,
+    pub screenshot: ScreenshotState,
 
     pub last_titlebar_click: Option<(
         Instant,
@@ -499,6 +513,11 @@ pub struct Srwc {
     )>,
 
     // -- global: screencasting --
+    pub screencast: ScreencastState,
+    pub has_systemd: bool,
+}
+
+pub struct ScreencastState {
     pub screencasting: Option<crate::dbus::screencasting::Screencasting>,
     pub conn_screen_cast: Option<zbus::blocking::Connection>,
     pub conn_service_channel: Option<zbus::blocking::Connection>,
@@ -508,7 +527,20 @@ pub struct Srwc {
         Option<Arc<Mutex<HashMap<String, crate::dbus::mutter_screen_cast::OutputInfo>>>>,
     pub conn_display_config: Option<zbus::blocking::Connection>,
     pub conn_introspect: Option<zbus::blocking::Connection>,
-    pub has_systemd: bool,
+}
+
+impl ScreencastState {
+    pub fn new() -> Self {
+        Self {
+            screencasting: None,
+            conn_screen_cast: None,
+            conn_service_channel: None,
+            gbm_device: None,
+            ipc_outputs: None,
+            conn_display_config: None,
+            conn_introspect: None,
+        }
+    }
 }
 
 /// Per-client state stored by wayland-server for each connected client.
@@ -520,6 +552,20 @@ pub struct ClientState {
 impl ClientData for ClientState {
     fn initialized(&self, _client_id: ClientId) {}
     fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
+}
+
+pub struct FocusState {
+    pub history: Vec<Window>,
+    pub cycle_index: Option<usize>,
+}
+
+impl FocusState {
+    pub fn new() -> Self {
+        Self {
+            history: Vec::new(),
+            cycle_index: None,
+        }
+    }
 }
 
 impl Srwc {
@@ -619,10 +665,6 @@ impl Srwc {
         seat.add_pointer();
         let autostart = config.autostart.clone();
         Self {
-            conn_display_config: None,
-            conn_introspect: None,
-            conn_service_channel: None,
-            ipc_outputs: None,
             start_time: Instant::now(),
             display_handle: dh,
             loop_handle,
@@ -675,8 +717,7 @@ impl Srwc {
             config,
             pending_center: HashSet::new(),
             pending_size: HashSet::new(),
-            focus_history: Vec::new(),
-            cycle_state: None,
+            focus: FocusState::new(),
             held_action: None,
             gestures: GestureContext {
                 state: None,
@@ -709,14 +750,9 @@ impl Srwc {
                 display: None,
                 client: None,
             },
-            screenshot_ui: ScreenshotUi::new(),
-            pending_screenshot: false,
-            pending_screenshot_screen: false,
-            pending_screenshot_confirm: false,
+            screenshot: ScreenshotState::new(),
             last_titlebar_click: None,
-            screencasting: None,
-            conn_screen_cast: None,
-            gbm_device: None,
+            screencast: ScreencastState::new(),
             has_systemd: false,
         }
     }
@@ -1402,10 +1438,10 @@ impl Srwc {
     }
 
     pub fn confirm_screenshot(&mut self) {
-        if !self.screenshot_ui.is_open() {
+        if !self.screenshot.ui.is_open() {
             return;
         }
-        self.pending_screenshot_confirm = true;
+        self.screenshot.pending_confirm = true;
     }
 
     pub fn save_screenshot(&mut self, size: Size<i32, Physical>, pixels: &[u8]) {
