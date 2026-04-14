@@ -446,7 +446,7 @@ pub fn applied_rule(
             .data_map
             .get::<std::sync::Mutex<AppliedWindowRule>>()
             .and_then(|m| m.lock().ok())
-            .map(|guard| guard.clone())
+            .map(|guard| AppliedWindowRule::clone(&guard))
     })
 }
 

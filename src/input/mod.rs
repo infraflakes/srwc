@@ -36,11 +36,8 @@ fn window_origin_for_surface(
     state: &Srwc,
     surface: &smithay::reexports::wayland_server::protocol::wl_surface::WlSurface,
 ) -> Option<Point<f64, smithay::utils::Logical>> {
-    let window = state
-        .space
-        .elements()
-        .find(|w| w.wl_surface().as_deref() == Some(surface))?;
-    Some(state.space.element_location(window)?.to_f64())
+    let window = state.window_for_surface(surface)?;
+    Some(state.space.element_location(&window)?.to_f64())
 }
 
 /// Compute the bounding box of all Add rectangles in a region.
@@ -776,10 +773,7 @@ impl Srwc {
                     Some(surface_origin + clamped_local)
                 } else {
                     // No region = confine to entire surface
-                    let window = self
-                        .space
-                        .elements()
-                        .find(|w| w.wl_surface().as_deref() == Some(&focus.0))?;
+                    let window = self.window_for_surface(&focus.0)?;
                     let size = window.geometry().size;
                     let clamped_local: Point<f64, smithay::utils::Logical> = (
                         local.x.clamp(0.0, size.w as f64),

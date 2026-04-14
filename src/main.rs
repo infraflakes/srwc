@@ -21,6 +21,23 @@ fn has_systemctl() -> bool {
         .is_ok_and(|s| s.success())
 }
 
+fn update_dbus_activation_env() {
+    let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
+    let cmd = format!(
+        "hash dbus-update-activation-environment 2>/dev/null && \
+         dbus-update-activation-environment {session_vars}"
+    );
+    match std::process::Command::new("/bin/sh")
+        .args(["-c", &cmd])
+        .spawn()
+    {
+        Ok(mut child) => {
+            let _ = child.wait();
+        }
+        Err(e) => tracing::warn!("Failed to import session environment: {e}"),
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging (RUST_LOG=info by default)
     if std::env::var("RUST_LOG").is_err() {
@@ -250,14 +267,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .to_string_lossy()
         .into_owned();
     tracing::info!("Listening on WAYLAND_DISPLAY={socket_name}");
-    // Standard Wayland session env vars for child processes
-    unsafe { std::env::set_var("WAYLAND_DISPLAY", &socket_name) };
-    unsafe { std::env::set_var("XDG_SESSION_TYPE", "wayland") };
-    unsafe { std::env::set_var("XDG_CURRENT_DESKTOP", "srwc") };
-    // Toolkit env vars (MOZ_ENABLE_WAYLAND, QT_QPA_PLATFORM, etc.) are now
-    // set in Config::load() with user [env] overrides taking precedence.
-    unsafe { std::env::set_var("XDG_SESSION_CLASS", "user") };
-    unsafe { std::env::set_var("XDG_SESSION_DESKTOP", "srwc") };
+    // Standard Wayland session env vars for child processes.
+    // SAFETY: called before any threads are spawned; env vars are process-global
+    // but this happens before any multi-threaded code runs.
+    unsafe {
+        std::env::set_var("WAYLAND_DISPLAY", &socket_name);
+        std::env::set_var("XDG_SESSION_TYPE", "wayland");
+        std::env::set_var("XDG_CURRENT_DESKTOP", "srwc");
+        std::env::set_var("XDG_SESSION_CLASS", "user");
+        std::env::set_var("XDG_SESSION_DESKTOP", "srwc");
+    }
 
     let is_session = backend_name == "udev";
     let has_systemd = is_session && has_systemctl();
@@ -282,36 +301,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Import specific session vars to systemd
         let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
-        let cmd = format!(
-            "systemctl --user import-environment {session_vars}; \
-             hash dbus-update-activation-environment 2>/dev/null && \
-             dbus-update-activation-environment {session_vars}"
-        );
-        match std::process::Command::new("/bin/sh")
+        let cmd = format!("systemctl --user import-environment {session_vars}");
+        let _ = std::process::Command::new("/bin/sh")
             .args(["-c", &cmd])
             .spawn()
-        {
-            Ok(mut child) => {
-                let _ = child.wait();
-            }
-            Err(e) => tracing::warn!("Failed to import session environment: {e}"),
-        }
+            .and_then(|mut c| c.wait());
+        // Also update D-Bus activation environment
+        update_dbus_activation_env();
     } else if is_session {
         // Non-systemd: only update D-Bus activation environment
-        let session_vars = "WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE XDG_SESSION_DESKTOP XDG_SESSION_CLASS";
-        let cmd = format!(
-            "hash dbus-update-activation-environment 2>/dev/null && \
-             dbus-update-activation-environment {session_vars}"
-        );
-        match std::process::Command::new("/bin/sh")
-            .args(["-c", &cmd])
-            .spawn()
-        {
-            Ok(mut child) => {
-                let _ = child.wait();
-            }
-            Err(e) => tracing::warn!("Failed to import session environment: {e}"),
-        }
+        update_dbus_activation_env();
         tracing::info!("systemd not found, skipping graphical-session target setup");
     }
 

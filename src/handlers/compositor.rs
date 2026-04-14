@@ -240,11 +240,7 @@ impl CompositorHandler for Srwc {
             while let Some(parent) = get_parent(&root) {
                 root = parent;
             }
-            let window = self
-                .space
-                .elements()
-                .find(|w| w.wl_surface().as_deref() == Some(&root))
-                .cloned();
+            let window = self.window_for_surface(&root);
             if let Some(window) = window {
                 window.on_commit();
 

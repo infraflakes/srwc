@@ -125,11 +125,7 @@ impl XdgShellHandler for Srwc {
         _output: Option<wl_output::WlOutput>,
     ) {
         let wl_surface = surface.wl_surface().clone();
-        let window = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned();
+        let window = self.window_for_surface(&wl_surface);
         if let Some(window) = window {
             self.enter_fullscreen(&window);
         }
@@ -143,11 +139,7 @@ impl XdgShellHandler for Srwc {
 
     fn maximize_request(&mut self, surface: ToplevelSurface) {
         let wl_surface = surface.wl_surface().clone();
-        let window = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned();
+        let window = self.window_for_surface(&wl_surface);
         if let Some(window) = window {
             self.toggle_fit_window(&window);
         }
@@ -155,11 +147,7 @@ impl XdgShellHandler for Srwc {
 
     fn unmaximize_request(&mut self, surface: ToplevelSurface) {
         let wl_surface = surface.wl_surface().clone();
-        let window = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned();
+        let window = self.window_for_surface(&wl_surface);
         if let Some(window) = window {
             self.unfit_window(&window);
         }
@@ -173,11 +161,7 @@ impl XdgShellHandler for Srwc {
         self.pending_center.remove(&wl_surface);
         self.pending_size.remove(&wl_surface);
         // Collect first to avoid holding an immutable borrow on space
-        let window = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned();
+        let window = self.window_for_surface(&wl_surface);
         if let Some(ref window) = window {
             // If this window had a parent, focus the parent (or its modal child)
             let parent_focus = window.parent_surface().and_then(|ps| {
@@ -227,12 +211,7 @@ impl XdgShellHandler for Srwc {
         if srwc::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
             return;
         }
-        let Some(window) = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned()
-        else {
+        let Some(window) = self.window_for_surface(&wl_surface) else {
             return;
         };
 
@@ -262,12 +241,7 @@ impl XdgShellHandler for Srwc {
         if srwc::config::applied_rule(&wl_surface).is_some_and(|r| r.widget) {
             return;
         }
-        let Some(window) = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&wl_surface))
-            .cloned()
-        else {
+        let Some(window) = self.window_for_surface(&wl_surface) else {
             return;
         };
 
@@ -354,11 +328,7 @@ impl Srwc {
         // We need to figure out where the root surface is on the output and express
         // the output bounds relative to the popup's toplevel.
         let active_output = self.active_output();
-        let target = if let Some(window) = self
-            .space
-            .elements()
-            .find(|w| w.wl_surface().as_deref() == Some(&root))
-        {
+        let target = if let Some(ref window) = self.window_for_surface(&root) {
             // Parent is an xdg window — target is the output rect in window-relative coords
             let window_loc = self.space.element_location(window).unwrap_or_default();
             let output_geo = active_output
