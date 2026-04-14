@@ -73,7 +73,7 @@ use smithay::reexports::drm::control::crtc;
 
 use crate::backend::Backend;
 use crate::input::gestures::GestureState;
-use crate::screenshot_ui::ScreenshotUi;
+use crate::render::screenshot_ui::ScreenshotUi;
 use srwc::canvas::MomentumState;
 use srwc::config::Config;
 use srwc::window_ext::WindowExt;
@@ -118,7 +118,7 @@ pub enum SessionLock {
     Locked,
 }
 
-pub use crate::focus::FocusTarget;
+pub use crate::input::focus::FocusTarget;
 
 /// Log an error result with context, discarding the Ok value.
 #[inline]
@@ -382,7 +382,7 @@ pub struct Srwc {
     // -- global: SSD decorations --
     pub decorations: HashMap<
         smithay::reexports::wayland_server::backend::ObjectId,
-        crate::decorations::WindowDecoration,
+        crate::render::decorations::WindowDecoration,
     >,
     pub pending_ssd: HashSet<smithay::reexports::wayland_server::backend::ObjectId>,
     // -- global: render state (shaders, blur, backgrounds, captures) --
@@ -499,7 +499,7 @@ pub struct Srwc {
     )>,
 
     // -- global: screencasting --
-    pub screencasting: Option<crate::screencasting::Screencasting>,
+    pub screencasting: Option<crate::dbus::screencasting::Screencasting>,
     pub conn_screen_cast: Option<zbus::blocking::Connection>,
     pub conn_service_channel: Option<zbus::blocking::Connection>,
     pub gbm_device:

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::grabs::{MoveSurfaceGrab, ResizeState, ResizeSurfaceGrab};
+use crate::input::grabs::{MoveSurfaceGrab, ResizeState, ResizeSurfaceGrab};
 use crate::state::{FocusTarget, Srwc, output_state};
 use smithay::{
     delegate_xdg_shell,

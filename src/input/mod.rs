@@ -1,5 +1,7 @@
 mod actions;
+pub(crate) mod focus;
 pub(crate) mod gestures;
+pub(crate) mod grabs;
 mod pointer;
 
 use smithay::{
@@ -25,7 +27,7 @@ use smithay::wayland::seat::WaylandFocus;
 use smithay::utils::{Logical, Rectangle};
 use smithay::wayland::compositor::{RectangleKind, RegionAttributes};
 
-use crate::decorations::DecorationHit;
+use crate::render::decorations::DecorationHit;
 use crate::state::{FocusTarget, Srwc};
 use srwc::canvas::{ScreenPos, screen_to_canvas};
 
@@ -870,10 +872,16 @@ impl Srwc {
             // Then check SSD decoration areas for this window
             if self.decorations.contains_key(&wl_surface.id()) {
                 let size = window.geometry().size;
-                if crate::decorations::close_button_contains(pos, loc, size.w, bar_height)
-                    || crate::decorations::title_bar_contains(pos, loc, size.w, bar_height)
-                    || crate::decorations::resize_edge_at(pos, loc, size, bar_height, border_width)
-                        .is_some()
+                if crate::render::decorations::close_button_contains(pos, loc, size.w, bar_height)
+                    || crate::render::decorations::title_bar_contains(pos, loc, size.w, bar_height)
+                    || crate::render::decorations::resize_edge_at(
+                        pos,
+                        loc,
+                        size,
+                        bar_height,
+                        border_width,
+                    )
+                    .is_some()
                 {
                     return Some((FocusTarget((*wl_surface).clone()), loc.to_f64()));
                 }
@@ -929,7 +937,7 @@ impl Srwc {
             && deco.close_hovered != hovered
         {
             deco.close_hovered = hovered;
-            deco.title_bar = crate::decorations::render_title_bar(
+            deco.title_bar = crate::render::decorations::render_title_bar(
                 deco.width,
                 deco.focused,
                 hovered,
@@ -943,7 +951,7 @@ impl Srwc {
         for deco in self.decorations.values_mut() {
             if deco.close_hovered {
                 deco.close_hovered = false;
-                deco.title_bar = crate::decorations::render_title_bar(
+                deco.title_bar = crate::render::decorations::render_title_bar(
                     deco.width,
                     deco.focused,
                     false,
@@ -976,18 +984,18 @@ impl Srwc {
             let size = window.geometry().size;
 
             // Close button (checked before title bar)
-            if crate::decorations::close_button_contains(pos, loc, size.w, bar_height) {
+            if crate::render::decorations::close_button_contains(pos, loc, size.w, bar_height) {
                 return Some((window.clone(), DecorationHit::CloseButton));
             }
 
             // Title bar
-            if crate::decorations::title_bar_contains(pos, loc, size.w, bar_height) {
+            if crate::render::decorations::title_bar_contains(pos, loc, size.w, bar_height) {
                 return Some((window.clone(), DecorationHit::TitleBar));
             }
 
             // Resize borders
             if let Some(edge) =
-                crate::decorations::resize_edge_at(pos, loc, size, bar_height, border_width)
+                crate::render::decorations::resize_edge_at(pos, loc, size, bar_height, border_width)
             {
                 return Some((window.clone(), DecorationHit::ResizeBorder(edge)));
             }

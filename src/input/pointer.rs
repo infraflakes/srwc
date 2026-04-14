@@ -18,8 +18,8 @@ use smithay::{
 
 use smithay::wayland::seat::WaylandFocus;
 
-use crate::decorations::DecorationHit;
-use crate::grabs::{MoveSurfaceGrab, NavigateGrab, PanGrab, ResizeState, ResizeSurfaceGrab};
+use crate::input::grabs::{MoveSurfaceGrab, NavigateGrab, PanGrab, ResizeState, ResizeSurfaceGrab};
+use crate::render::decorations::DecorationHit;
 use crate::state::{FocusTarget, PendingMiddleClick, Srwc};
 use smithay::reexports::wayland_server::Resource;
 use srwc::canvas::{self, CanvasPos, canvas_to_screen};

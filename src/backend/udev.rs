@@ -1211,7 +1211,7 @@ fn render_frame(
         let renderer = backend.renderer();
         // target_presentation_time: use the current monotonic time as a reasonable
         // approximation — the frame has just been submitted to DRM.
-        let target_time = crate::screencasting::pw_utils::get_monotonic_time();
+        let target_time = crate::dbus::screencasting::pw_utils::get_monotonic_time();
         data.render_for_screen_cast(renderer, output, &elements, target_time);
         // Also render individual window casts
         let renderer = backend.renderer();

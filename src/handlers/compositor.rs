@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use crate::grabs::{ResizeState, has_left, has_top};
 use crate::handlers::layer_shell::LayerDestroyedMarker;
+use crate::input::grabs::{ResizeState, has_left, has_top};
 use crate::state::{ClientState, FocusTarget, Srwc};
 use smithay::desktop::layer_map_for_output;
 use smithay::input::pointer::CursorImageStatus;
@@ -405,7 +405,7 @@ impl CompositorHandler for Srwc {
                                 && !is_none_mode
                                 && !self.decorations.contains_key(&root.id())
                             {
-                                let deco = crate::decorations::WindowDecoration::new(
+                                let deco = crate::render::decorations::WindowDecoration::new(
                                     geo.size.w,
                                     true,
                                     &self.config.decorations,

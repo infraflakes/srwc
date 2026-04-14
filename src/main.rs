@@ -1,16 +1,12 @@
 mod backend;
 mod dbus;
-mod decorations;
-mod focus;
-mod grabs;
 mod handlers;
 mod input;
 mod install;
 mod render;
-mod screencasting;
-mod screenshot_ui;
 mod state;
 
+use crate::dbus::screencasting::Screencasting;
 use smithay::reexports::wayland_server::Resource;
 use smithay::wayland::shell::xdg::XdgToplevelSurfaceData;
 use state::{ClientState, Srwc};
@@ -138,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         data.conn_service_channel = dbus::try_start(service_channel);
 
         // Initialize screencasting subsystem (creates the PipeWire calloop channel)
-        data.screencasting = Some(screencasting::Screencasting::new(&event_loop.handle()));
+        data.screencasting = Some(Screencasting::new(&event_loop.handle()));
 
         // Create D-Bus calloop channel for ScreenCast messages
         let (to_srwc, from_screen_cast) = smithay::reexports::calloop::channel::channel();

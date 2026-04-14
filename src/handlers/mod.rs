@@ -537,7 +537,7 @@ impl XdgDecorationHandler for Srwc {
             if let Some(window) = window {
                 let geo = window.geometry();
                 if geo.size.w > 0 && !self.decorations.contains_key(&wl_surface.id()) {
-                    let deco = crate::decorations::WindowDecoration::new(
+                    let deco = crate::render::decorations::WindowDecoration::new(
                         geo.size.w,
                         true,
                         &self.config.decorations,

@@ -1,6 +1,9 @@
-use crate::screencasting::pw_utils::CastTarget;
+use crate::dbus::screencasting::pw_utils::CastTarget;
 use std::borrow::Cow;
 use std::time::Duration;
+
+pub(crate) mod decorations;
+pub(crate) mod screenshot_ui;
 
 use smithay::{
     backend::renderer::{
@@ -71,7 +74,7 @@ pub const BG_UNIFORMS: &[UniformName<'static>] = &[UniformName {
 }];
 
 /// Shadow shader source — soft box-shadow around SSD windows.
-const SHADOW_SHADER_SRC: &str = include_str!("../shaders/shadow.glsl");
+const SHADOW_SHADER_SRC: &str = include_str!("shaders/shadow.glsl");
 
 /// Uniform declarations for the shadow shader.
 pub const SHADOW_UNIFORMS: &[UniformName<'static>] = &[
@@ -139,7 +142,7 @@ fn shadow_uniforms(
     ]
 }
 
-const CORNER_CLIP_SRC: &str = include_str!("../shaders/corner_clip.glsl");
+const CORNER_CLIP_SRC: &str = include_str!("shaders/corner_clip.glsl");
 
 pub const CORNER_CLIP_UNIFORMS: &[UniformName<'static>] = &[
     UniformName {
